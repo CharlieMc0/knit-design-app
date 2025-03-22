@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Knitting Chart Maker</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <h1>Knitting Chart Maker</h1>
+            <div class="header-controls">
+                <div class="grid-controls">
+                    <label for="grid-width">Width:</label>
+                    <input type="number" id="grid-width" min="5" max="200" value="50">
+                    <label for="grid-height">Height:</label>
+                    <input type="number" id="grid-height" min="5" max="200" value="50">
+                    <button id="resize-grid">Resize Grid</button>
+                </div>
+                <div class="zoom-controls">
+                    <button id="zoom-in">+</button>
+                    <button id="zoom-out">-</button>
+                    <button id="zoom-reset">Reset Zoom</button>
+                </div>
+            </div>
+        </header>
+        
+        <div class="main-content">
+            <div class="toolbar">
+                <div class="tool-group">
+                    <h3>Tools</h3>
+                    <button class="tool-btn" id="select-tool" title="Select">⬚</button>
+                    <button class="tool-btn" id="pencil-tool" title="Pencil">✏️</button>
+                    <button class="tool-btn" id="rectangle-tool" title="Rectangle">□</button>
+                    <button class="tool-btn" id="circle-tool" title="Circle">○</button>
+                    <button class="tool-btn" id="line-tool" title="Line">╱</button>
+                    <button class="tool-btn" id="fill-tool" title="Fill">🪣</button>
+                </div>
+                
+                <div class="tool-group">
+                    <h3>Colors</h3>
+                    <div class="color-palette" id="color-palette">
+                        <!-- Color swatches will be added here dynamically -->
+                    </div>
+                    <button id="add-color" title="Add Color">+</button>
+                </div>
+                
+                <div class="tool-group">
+                    <h3>Layers</h3>
+                    <div class="layers-list" id="layers-list">
+                        <!-- Layers will be added here dynamically -->
+                    </div>
+                    <div class="layer-controls">
+                        <button id="add-layer" title="Add new layer">Add Layer</button>
+                        <button id="delete-layer" title="Delete selected layer">Delete Layer</button>
+                    </div>
+                    <div class="layer-properties">
+                        <label for="layer-opacity">Opacity:</label>
+                        <input type="range" id="layer-opacity" min="0" max="100" value="100">
+                        <div class="position-controls">
+                            <label for="layer-x">X:</label>
+                            <input type="number" id="layer-x" min="0" max="200" value="0" class="small-input">
+                            <label for="layer-y">Y:</label>
+                            <input type="number" id="layer-y" min="0" max="200" value="0" class="small-input">
+                        </div>
+                        <div class="position-arrows">
+                            <button id="layer-move-up" title="Move Up">↑</button>
+                            <div class="horizontal-arrows">
+                                <button id="layer-move-left" title="Move Left">←</button>
+                                <button id="layer-move-right" title="Move Right">→</button>
+                            </div>
+                            <button id="layer-move-down" title="Move Down">↓</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tool-group">
+                    <h3>Mirror</h3>
+                    <button class="mirror-btn" id="mirror-horizontal" title="Mirror Horizontally">↔️</button>
+                    <button class="mirror-btn" id="mirror-vertical" title="Mirror Vertically">↕️</button>
+                    <button class="mirror-btn" id="mirror-diagonal" title="Mirror Diagonally">⤡</button>
+                    <div class="toggle-container">
+                        <label for="mirror-live-toggle">Live Update</label>
+                        <input type="checkbox" id="mirror-live-toggle" checked>
+                    </div>
+                </div>
+                
+                <div class="tool-group">
+                    <h3>Actions</h3>
+                    <button id="undo-action" title="Undo (Ctrl+Z)">Undo</button>
+                    <button id="copy-selection" title="Copy Selection (Ctrl+C)">Copy</button>
+                    <button id="paste-selection" title="Paste Selection (Ctrl+V)">Paste</button>
+                    <button id="export-pdf" title="Export as PDF">Export PDF</button>
+                    <button id="share-design" title="Share Design">Share</button>
+                    <button id="clear-grid" title="Clear Grid">Clear All</button>
+                </div>
+            </div>
+            
+            <div class="canvas-container">
+                <div id="grid-container">
+                    <canvas id="knitting-grid"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>Knitting Chart Maker - Made with ❤️ for Grandma</p>
+        </footer>
+    </div>
+
+    <!-- Modal for color picker -->
+    <div id="color-picker-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Choose Color</h2>
+            <input type="color" id="color-picker">
+            <button id="confirm-color">Add Color</button>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="scripts/grid.js"></script>
+    <script src="scripts/color-manager.js"></script>
+    <script src="scripts/shapes.js"></script>
+    <script src="scripts/tools.js"></script>
+    <script src="scripts/mirror.js"></script>
+    <script src="scripts/export.js"></script>
+    <script src="scripts/app.js"></script>
+    <script src="scripts/undo-manager.js"></script>
+    <script src="scripts/layer-manager.js"></script>
+</body>
+</html> 

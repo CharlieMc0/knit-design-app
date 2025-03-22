@@ -1,0 +1,330 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background-color: #f8f8f8;
+}
+
+.app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 1rem;
+}
+
+header {
+    padding: 1rem 0;
+    border-bottom: 1px solid #ddd;
+}
+
+h1 {
+    font-size: 1.8rem;
+    margin-bottom: 1rem;
+    color: #2c3e50;
+}
+
+.header-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.grid-controls, .zoom-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+input[type="number"] {
+    width: 60px;
+    padding: 0.3rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+button {
+    padding: 0.4rem 0.8rem;
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+button:hover {
+    background-color: #2980b9;
+}
+
+.main-content {
+    display: flex;
+    flex: 1;
+    gap: 1rem;
+    overflow: hidden;
+    padding: 1rem 0;
+}
+
+.toolbar {
+    width: 200px;
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    overflow-y: auto;
+}
+
+.tool-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.tool-group h3 {
+    font-size: 1rem;
+    color: #7f8c8d;
+    margin-bottom: 0.3rem;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 0.3rem;
+}
+
+.tool-btn {
+    font-size: 1.2rem;
+    padding: 0.5rem;
+    background-color: #f1f1f1;
+    color: #333;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.tool-btn.active {
+    background-color: #3498db;
+    color: white;
+}
+
+.color-palette {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.color-swatch {
+    width: 30px;
+    height: 30px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    cursor: pointer;
+}
+
+.color-swatch.active {
+    border: 2px solid #333;
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.5);
+}
+
+.canvas-container {
+    flex: 1;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    overflow: auto;
+    position: relative;
+}
+
+#grid-container {
+    position: relative;
+    transform-origin: 0 0;
+}
+
+#knitting-grid {
+    background-color: white;
+    cursor: crosshair;
+}
+
+.toggle-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+footer {
+    padding: 1rem 0;
+    text-align: center;
+    color: #7f8c8d;
+    border-top: 1px solid #ddd;
+}
+
+/* Modal */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 100;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal-content {
+    background-color: white;
+    margin: 15% auto;
+    padding: 2rem;
+    border-radius: 8px;
+    width: 300px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    text-align: center;
+}
+
+.close {
+    float: right;
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+
+#color-picker {
+    width: 100%;
+    height: 50px;
+    margin: 1rem 0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .main-content {
+        flex-direction: column;
+    }
+    
+    .toolbar {
+        width: 100%;
+        flex-direction: row;
+        overflow-x: auto;
+        padding: 0.5rem;
+    }
+    
+    .tool-group {
+        min-width: 150px;
+    }
+}
+
+/* Add these styles to your existing CSS file */
+.layers-list {
+    max-height: 150px;
+    overflow-y: auto;
+    margin-bottom: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: white;
+}
+
+.layer-item {
+    padding: 6px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+}
+
+.layer-item:last-child {
+    border-bottom: none;
+}
+
+.layer-item.active {
+    background-color: #e6f7ff;
+    border-left: 3px solid #1890ff;
+}
+
+.layer-item .layer-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.layer-item .layer-visibility {
+    margin-right: 8px;
+    cursor: pointer;
+    opacity: 0.7;
+}
+
+.layer-item .layer-visibility:hover {
+    opacity: 1;
+}
+
+.layer-properties {
+    margin-top: 10px;
+}
+
+.small-input {
+    width: 40px;
+}
+
+.position-controls {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 5px;
+}
+
+/* Add these styles for the position arrow buttons */
+.position-arrows {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 10px;
+    gap: 3px;
+}
+
+.position-arrows button {
+    width: 32px;
+    height: 32px;
+    padding: 3px;
+    background-color: #f1f1f1;
+    border: 1px solid #ddd;
+    color: #333;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.position-arrows button:hover {
+    background-color: #e0e0e0;
+}
+
+.horizontal-arrows {
+    display: flex;
+    gap: 5px;
+}
+
+/* Toast notification */
+.toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 4px;
+    z-index: 1000;
+    transition: transform 0.3s ease;
+}
+
+.toast.show {
+    transform: translateX(-50%) translateY(0);
+} 
