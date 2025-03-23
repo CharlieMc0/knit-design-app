@@ -62,6 +62,11 @@ class KnittingGrid {
         document.getElementById('paste-selection').addEventListener('click', () => {
             this.pasteSelection();
         });
+        
+        // Save design button
+        document.getElementById('save-design').addEventListener('click', () => {
+            this.saveDesign();
+        });
     }
     
     handleMouseDown(e) {
@@ -287,22 +292,45 @@ class KnittingGrid {
     }
     
     setCellColor(x, y, color) {
+        if (this.app.layerManager) {
+            const layer = this.app.layerManager.getActiveLayer();
+            if (layer) {
+                // Save state before making changes
+                if (layer.getCell(x, y) !== color) {
+                    this.app.undoManager.saveState('Change cell color');
+                }
+                
+                // Set cell in layer
+                layer.setCell(x, y, color);
+                
+                // Apply mirror if active and live update is enabled
+                if (this.app.mirrorManager && 
+                    this.app.mirrorManager.isActive() && 
+                    this.app.mirrorManager.liveUpdate) {
+                    this.app.mirrorManager.applyMirror();
+                }
+                
+                this.render();
+                return;
+            }
+        }
+        
+        // If not using layers
         if (x >= 0 && x < this.gridWidth && y >= 0 && y < this.gridHeight) {
             // Save state before making changes
-            this.app.undoManager.saveState('Change cell color');
-            
-            if (this.app.layerManager) {
-                // Apply to layer if available
-                const layer = this.app.layerManager.getActiveLayer();
-                if (layer) {
-                    layer.setCell(x, y, color);
-                    this.render();
-                    return;
-                }
+            if (this.gridData[y][x] !== color) {
+                this.app.undoManager.saveState('Change cell color');
             }
             
-            // Fall back to direct grid data if no layer is active
             this.gridData[y][x] = color;
+            
+            // Apply mirror if active and live update is enabled
+            if (this.app.mirrorManager && 
+                this.app.mirrorManager.isActive() && 
+                this.app.mirrorManager.liveUpdate) {
+                this.app.mirrorManager.applyMirror();
+            }
+            
             this.render();
         }
     }
@@ -764,5 +792,37 @@ class KnittingGrid {
                 }, 300);
             }, 2000);
         }, 100);
+    }
+    
+    saveDesign() {
+        // Create the design data object
+        const designData = {
+            gridWidth: this.gridWidth,
+            gridHeight: this.gridHeight,
+            layers: this.app.layerManager ? this.app.layerManager.layers : [],
+            colors: this.app.colorManager.colors,
+            version: "1.0"
+        };
+        
+        // Convert to JSON string
+        const designJson = JSON.stringify(designData, null, 2);
+        
+        // Create blob and download link
+        const blob = new Blob([designJson], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        
+        // Create temporary link and trigger download
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'knitting-chart.json';
+        document.body.appendChild(link);
+        link.click();
+        
+        // Clean up
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        // Show feedback
+        this.showToast('Design saved!');
     }
 } 

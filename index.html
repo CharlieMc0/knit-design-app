@@ -76,9 +76,11 @@
                     <button id="undo-action" title="Undo (Ctrl+Z)">Undo</button>
                     <button id="copy-selection" title="Copy Selection (Ctrl+C)">Copy</button>
                     <button id="paste-selection" title="Paste Selection (Ctrl+V)">Paste</button>
+                    <button id="save-design" title="Save design to file">Save Design</button>
                     <button id="export-pdf" title="Export as PDF">Export PDF</button>
                     <button id="share-design" title="Share Design">Share</button>
                     <button id="clear-grid" title="Clear Grid">Clear All</button>
+                    <button id="layer-drag-toggle" title="Toggle layer drag mode">Move Layer</button>
                 </div>
                 
                 <div class="tool-group">
@@ -93,10 +95,7 @@
                     <div class="layer-properties">
                         <label for="layer-opacity">Opacity:</label>
                         <input type="range" id="layer-opacity" min="0" max="100" value="100">
-                        <div class="layer-drag-info">
-                            <button id="layer-drag-toggle" title="Toggle layer drag mode">Move Layer (Drag)</button>
-                            <span class="layer-position-display"></span>
-                        </div>
+                        <span class="layer-position-display"></span>
                     </div>
                 </div>
             </div>

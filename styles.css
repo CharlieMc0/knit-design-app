@@ -330,10 +330,7 @@ footer {
 
 /* Remove position arrows styles and replace with these */
 .layer-drag-info {
-    display: flex;
-    flex-direction: column;
-    margin-top: 10px;
-    gap: 5px;
+    display: none;
 }
 
 #layer-drag-toggle {
@@ -353,7 +350,8 @@ footer {
     font-size: 12px;
     color: #666;
     text-align: center;
-    margin-top: 2px;
+    margin-top: 5px;
+    min-height: 15px;
 }
 
 /* Add cursor styles for dragging */

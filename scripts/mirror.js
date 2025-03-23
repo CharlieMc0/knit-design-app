@@ -1,9 +1,9 @@
 class MirrorManager {
-    constructor(grid) {
-        this.grid = grid;
-        this.mirrorHorizontal = false;
-        this.mirrorVertical = false;
-        this.mirrorDiagonal = false;
+    constructor(app) {
+        this.app = app;
+        this.horizontalActive = false;
+        this.verticalActive = false;
+        this.diagonalActive = false;
         this.liveUpdate = true;
         
         this.setupEventListeners();
@@ -11,93 +11,176 @@ class MirrorManager {
     
     setupEventListeners() {
         document.getElementById('mirror-horizontal').addEventListener('click', () => {
-            this.mirrorHorizontal = !this.mirrorHorizontal;
-            this.updateButtonState('mirror-horizontal', this.mirrorHorizontal);
+            console.log('Mirror horizontal clicked, app:', this.app, 'grid:', this.app?.grid);
+            this.horizontalActive = !this.horizontalActive;
+            this.updateButtonStates();
             if (this.liveUpdate) this.applyMirror();
         });
         
         document.getElementById('mirror-vertical').addEventListener('click', () => {
-            this.mirrorVertical = !this.mirrorVertical;
-            this.updateButtonState('mirror-vertical', this.mirrorVertical);
+            this.verticalActive = !this.verticalActive;
+            this.updateButtonStates();
             if (this.liveUpdate) this.applyMirror();
         });
         
         document.getElementById('mirror-diagonal').addEventListener('click', () => {
-            this.mirrorDiagonal = !this.mirrorDiagonal;
-            this.updateButtonState('mirror-diagonal', this.mirrorDiagonal);
+            this.diagonalActive = !this.diagonalActive;
+            this.updateButtonStates();
             if (this.liveUpdate) this.applyMirror();
         });
         
         document.getElementById('mirror-live-toggle').addEventListener('change', (e) => {
             this.liveUpdate = e.target.checked;
-            if (this.liveUpdate) this.applyMirror();
         });
     }
     
-    updateButtonState(buttonId, isActive) {
-        const button = document.getElementById(buttonId);
-        if (isActive) {
-            button.classList.add('active');
-        } else {
-            button.classList.remove('active');
-        }
+    updateButtonStates() {
+        const horizontalBtn = document.getElementById('mirror-horizontal');
+        const verticalBtn = document.getElementById('mirror-vertical');
+        const diagonalBtn = document.getElementById('mirror-diagonal');
+        
+        horizontalBtn.classList.toggle('active', this.horizontalActive);
+        verticalBtn.classList.toggle('active', this.verticalActive);
+        diagonalBtn.classList.toggle('active', this.diagonalActive);
     }
     
     isActive() {
-        return this.mirrorHorizontal || this.mirrorVertical || this.mirrorDiagonal;
+        return this.horizontalActive || this.verticalActive || this.diagonalActive;
     }
     
     applyMirror() {
-        // Create a copy of the original grid data
-        const originalData = JSON.parse(JSON.stringify(this.grid.gridData));
+        if (!this.isActive() || !this.app || !this.app.grid) return;
+        
+        if (this.app.layerManager) {
+            const activeLayer = this.app.layerManager.getActiveLayer();
+            if (activeLayer) {
+                // Create a copy of the current cells to avoid modification during iteration
+                const originalCells = {...activeLayer.cells};
+                
+                // Mirror the cells
+                this.mirrorLayerCells(activeLayer, originalCells);
+                this.app.grid.render();
+                return;
+            }
+        }
+        
+        // If not using layers, mirror the grid data
+        this.mirrorGridData();
+        this.app.grid.render();
+    }
+    
+    mirrorLayerCells(layer, originalCells) {
+        // Use the center of the grid for mirroring, not just the cell bounds
+        const centerX = Math.floor(this.app.grid.gridWidth / 2);
+        const centerY = Math.floor(this.app.grid.gridHeight / 2);
         
         // Apply horizontal mirroring
-        if (this.mirrorHorizontal) {
-            this.applyHorizontalMirror(originalData);
+        if (this.horizontalActive) {
+            Object.entries(originalCells).forEach(([key, color]) => {
+                if (!color) return;
+                
+                const [x, y] = key.split(',').map(Number);
+                const mirroredX = 2 * centerX - x;
+                
+                // Set the mirrored cell
+                layer.setCell(mirroredX, y, color);
+            });
         }
         
         // Apply vertical mirroring
-        if (this.mirrorVertical) {
-            this.applyVerticalMirror(originalData);
+        if (this.verticalActive) {
+            Object.entries(originalCells).forEach(([key, color]) => {
+                if (!color) return;
+                
+                const [x, y] = key.split(',').map(Number);
+                const mirroredY = 2 * centerY - y;
+                
+                // Set the mirrored cell
+                layer.setCell(x, mirroredY, color);
+            });
         }
         
         // Apply diagonal mirroring
-        if (this.mirrorDiagonal) {
-            this.applyDiagonalMirror(originalData);
+        if (this.diagonalActive) {
+            Object.entries(originalCells).forEach(([key, color]) => {
+                if (!color) return;
+                
+                const [x, y] = key.split(',').map(Number);
+                
+                // Using relative displacement from center
+                const dx = x - centerX;
+                const dy = y - centerY;
+                
+                // Swap dx and dy for diagonal mirroring
+                const mirroredX = centerX + dy;
+                const mirroredY = centerY + dx;
+                
+                // Set the mirrored cell
+                layer.setCell(mirroredX, mirroredY, color);
+            });
         }
-        
-        this.grid.render();
     }
     
-    applyHorizontalMirror(originalData) {
-        const centerX = Math.floor(this.grid.gridWidth / 2);
+    mirrorGridData() {
+        if (!this.app || !this.app.grid) return;
         
-        for (let y = 0; y < this.grid.gridHeight; y++) {
-            for (let x = 0; x < centerX; x++) {
-                const mirrorX = this.grid.gridWidth - 1 - x;
-                this.grid.gridData[y][mirrorX] = originalData[y][x];
+        const grid = this.app.grid;
+        const width = grid.gridWidth;
+        const height = grid.gridHeight;
+        
+        if (!width || !height) return;
+        
+        const centerX = Math.floor(width / 2);
+        const centerY = Math.floor(height / 2);
+        
+        // Create a copy of the grid data
+        const originalData = grid.gridData.map(row => [...row]);
+        
+        // Apply horizontal mirroring
+        if (this.horizontalActive) {
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    if (originalData[y][x]) {
+                        const mirroredX = 2 * centerX - x;
+                        if (mirroredX >= 0 && mirroredX < width) {
+                            grid.gridData[y][mirroredX] = originalData[y][x];
+                        }
+                    }
+                }
             }
         }
-    }
-    
-    applyVerticalMirror(originalData) {
-        const centerY = Math.floor(this.grid.gridHeight / 2);
         
-        for (let y = 0; y < centerY; y++) {
-            for (let x = 0; x < this.grid.gridWidth; x++) {
-                const mirrorY = this.grid.gridHeight - 1 - y;
-                this.grid.gridData[mirrorY][x] = originalData[y][x];
+        // Apply vertical mirroring
+        if (this.verticalActive) {
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    if (originalData[y][x]) {
+                        const mirroredY = 2 * centerY - y;
+                        if (mirroredY >= 0 && mirroredY < height) {
+                            grid.gridData[mirroredY][x] = originalData[y][x];
+                        }
+                    }
+                }
             }
         }
-    }
-    
-    applyDiagonalMirror(originalData) {
-        // Only works well for square grids, but will attempt for rectangular ones too
-        const size = Math.min(this.grid.gridWidth, this.grid.gridHeight);
         
-        for (let y = 0; y < size; y++) {
-            for (let x = 0; x < y; x++) {
-                this.grid.gridData[x][y] = originalData[y][x];
+        // Apply diagonal mirroring
+        if (this.diagonalActive) {
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    if (originalData[y][x]) {
+                        const dx = x - centerX;
+                        const dy = y - centerY;
+                        
+                        const mirroredX = centerX + dy;
+                        const mirroredY = centerY + dx;
+                        
+                        if (mirroredX >= 0 && mirroredX < width && 
+                            mirroredY >= 0 && mirroredY < height) {
+                            grid.gridData[mirroredY][mirroredX] = originalData[y][x];
+                        }
+                    }
+                }
             }
         }
     }
