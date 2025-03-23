@@ -74,9 +74,39 @@ class KnittingGrid {
             this.render();
         });
 
-        // Add eraser tool button listener
+        // Add tool button listeners
+        document.getElementById('pencil-tool').addEventListener('click', () => {
+            this.app.currentTool = 'pencil';
+            this.clearSelection();  // Clear selection when switching tools
+        });
+
+        document.getElementById('select-tool').addEventListener('click', () => {
+            this.app.currentTool = 'select';
+        });
+
         document.getElementById('eraser-tool').addEventListener('click', () => {
             this.app.currentTool = 'eraser';
+            this.clearSelection();  // Clear selection when switching tools
+        });
+
+        document.getElementById('rectangle-tool').addEventListener('click', () => {
+            this.app.currentTool = 'rectangle';
+            this.clearSelection();  // Clear selection when switching tools
+        });
+
+        document.getElementById('circle-tool').addEventListener('click', () => {
+            this.app.currentTool = 'circle';
+            this.clearSelection();  // Clear selection when switching tools
+        });
+
+        document.getElementById('line-tool').addEventListener('click', () => {
+            this.app.currentTool = 'line';
+            this.clearSelection();  // Clear selection when switching tools
+        });
+
+        document.getElementById('fill-tool').addEventListener('click', () => {
+            this.app.currentTool = 'fill';
+            this.clearSelection();  // Clear selection when switching tools
         });
     }
     
@@ -938,5 +968,13 @@ class KnittingGrid {
                 this.render();
             }
         }
+    }
+
+    // Add this helper method
+    clearSelection() {
+        this.selectedCells = [];
+        this.isSelecting = false;
+        this.selectionStart = null;
+        this.render();
     }
 } 
