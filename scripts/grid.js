@@ -66,11 +66,6 @@ class KnittingGrid {
         document.getElementById('load-design').addEventListener('click', () => {
             this.loadDesign();
         });
-
-        // Oval tool button
-        document.getElementById('oval-tool').addEventListener('click', () => {
-            this.app.currentTool = 'oval';
-        });
     }
     
     handleMouseDown(e) {
@@ -80,10 +75,6 @@ class KnittingGrid {
         
         if (gridX < 0 || gridX >= this.gridWidth || gridY < 0 || gridY >= this.gridHeight) {
             return; // Out of bounds
-        }
-        
-        if (this.app.currentTool === 'oval') {
-            this.app.shapeDrawer.startDrawing('oval', gridX, gridY);
         }
         
         // If we're in layer drag mode, don't handle drawing
@@ -167,7 +158,7 @@ class KnittingGrid {
                         this.app.mirrorManager.liveUpdate) {
                         this.app.mirrorManager.applyMirror();
                     }
-                } else if (['rectangle', 'circle', 'line', 'oval'].includes(this.app.currentTool) && 
+                } else if (['rectangle', 'circle', 'line'].includes(this.app.currentTool) && 
                           this.app.shapeDrawer.isDrawing) {
                     this.app.shapeDrawer.updatePreview(localPos.x, localPos.y);
                 }
@@ -188,7 +179,7 @@ class KnittingGrid {
                 this.app.mirrorManager.liveUpdate) {
                 this.app.mirrorManager.applyMirror();
             }
-        } else if (['rectangle', 'circle', 'line', 'oval'].includes(this.app.currentTool) && 
+        } else if (['rectangle', 'circle', 'line'].includes(this.app.currentTool) && 
                   this.app.shapeDrawer.isDrawing) {
             this.app.shapeDrawer.updatePreview(gridX, gridY);
         }
@@ -202,7 +193,7 @@ class KnittingGrid {
         }
         
         // Finalize shape drawing
-        if (['rectangle', 'circle', 'line', 'oval'].includes(this.app.currentTool) && 
+        if (['rectangle', 'circle', 'line'].includes(this.app.currentTool) && 
             this.app.shapeDrawer && this.app.shapeDrawer.isDrawing) {
             
             const coords = this.getCellCoordinates(e);
