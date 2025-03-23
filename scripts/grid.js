@@ -763,22 +763,51 @@ class KnittingGrid {
         // Find the boundaries of the selection
         let minX = this.gridWidth;
         let minY = this.gridHeight;
+        let maxX = 0;
+        let maxY = 0;
         
+        // First pass: find boundaries
         this.selectedCells.forEach(cell => {
             minX = Math.min(minX, cell.x);
             minY = Math.min(minY, cell.y);
+            maxX = Math.max(maxX, cell.x);
+            maxY = Math.max(maxY, cell.y);
         });
         
-        // Copy the selected cells to the new layer
+        // Second pass: copy cells
         this.selectedCells.forEach(cell => {
-            const color = this.gridData[cell.y][cell.x];
+            let color = null;
+            
+            // Get color from visible layers, starting from top
+            if (this.app.layerManager) {
+                // Get all visible layers in reverse order (top to bottom)
+                const visibleLayers = this.app.layerManager.getAllVisibleLayers().reverse();
+                
+                // Look for color in each layer
+                for (const layer of visibleLayers) {
+                    const worldKey = `${cell.x},${cell.y}`;
+                    if (layer.cells[worldKey]) {
+                        color = layer.cells[worldKey];
+                        break; // Stop once we find a color
+                    }
+                }
+            }
+            
+            // If no color found in layers, try grid data
+            if (!color) {
+                color = this.gridData[cell.y][cell.x];
+            }
+            
+            // If we found a color, add it to the new layer
             if (color) {
-                // Position relative to the top-left of the selection
-                const localX = cell.x - minX;
-                const localY = cell.y - minY;
-                newLayer.cells[`${localX},${localY}`] = color;
+                const worldKey = `${cell.x},${cell.y}`;
+                newLayer.cells[worldKey] = color;
             }
         });
+        
+        // Update the layer's position and size
+        newLayer.width = maxX - minX + 1;
+        newLayer.height = maxY - minY + 1;
         
         this.app.layerManager.renderLayersList();
         this.render();
