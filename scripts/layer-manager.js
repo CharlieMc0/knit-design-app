@@ -168,6 +168,14 @@ class LayerManager {
         layersList.addEventListener('dragend', this.handleDragEnd.bind(this));
         layersList.addEventListener('dragover', this.handleDragOver.bind(this));
         layersList.addEventListener('drop', this.handleDrop.bind(this));
+
+        // Add merge down button listener
+        const mergeDownBtn = document.getElementById('merge-down');
+        if (mergeDownBtn) {
+            mergeDownBtn.addEventListener('click', () => {
+                this.mergeDown();
+            });
+        }
     }
     
     addLayer(name) {
@@ -396,5 +404,67 @@ class LayerManager {
         // Update the display
         this.renderLayersList();
         this.app.grid.render();
+    }
+
+    // Add new method to merge layers
+    mergeDown() {
+        const activeLayer = this.getActiveLayer();
+        if (!activeLayer) return;
+
+        // Find the index of the active layer
+        const activeIndex = this.layers.findIndex(l => l.id === activeLayer.id);
+        
+        // Check if there's a layer below
+        if (activeIndex <= 0) {
+            this.app.grid.showToast('No layer below to merge with');
+            return;
+        }
+
+        // Get the layer below
+        const lowerLayer = this.layers[activeIndex - 1];
+        
+        // Save state before merging
+        this.app.undoManager.saveState('Merge layers');
+
+        // Create a new merged layer
+        const mergedLayer = new Layer(this.nextLayerId++, `Merged Layer ${this.nextLayerId}`);
+        
+        // Copy cells from lower layer first (so upper layer takes precedence)
+        Object.entries(lowerLayer.cells).forEach(([key, color]) => {
+            const [x, y] = key.split(',').map(Number);
+            // Convert from lower layer's local coordinates to world coordinates
+            const worldPos = lowerLayer.localToWorld(x, y);
+            // Convert world coordinates to merged layer's local coordinates
+            const localPos = mergedLayer.worldToLocal(worldPos.x, worldPos.y);
+            mergedLayer.setCell(localPos.x, localPos.y, color);
+        });
+
+        // Copy cells from active (upper) layer
+        Object.entries(activeLayer.cells).forEach(([key, color]) => {
+            const [x, y] = key.split(',').map(Number);
+            // Convert from active layer's local coordinates to world coordinates
+            const worldPos = activeLayer.localToWorld(x, y);
+            // Convert world coordinates to merged layer's local coordinates
+            const localPos = mergedLayer.worldToLocal(worldPos.x, worldPos.y);
+            mergedLayer.setCell(localPos.x, localPos.y, color);
+        });
+
+        // Set opacity to the active layer's opacity
+        mergedLayer.opacity = activeLayer.opacity;
+        
+        // Remove the two original layers
+        this.layers.splice(activeIndex - 1, 2);
+        
+        // Add the merged layer in their place
+        this.layers.splice(activeIndex - 1, 0, mergedLayer);
+        
+        // Set the merged layer as active
+        this.setActiveLayer(mergedLayer.id);
+        
+        // Update the display
+        this.renderLayersList();
+        this.app.grid.render();
+        
+        this.app.grid.showToast('Layers merged successfully');
     }
 } 

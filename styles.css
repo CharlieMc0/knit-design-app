@@ -566,4 +566,30 @@ footer p {
     border: 1px solid #ff69b4;
     border-radius: 2px;
     box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.layer-controls {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.layer-controls button {
+    flex: 1;
+    padding: 6px;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+#merge-down {
+    background-color: #4CAF50;
+}
+
+#merge-down:hover {
+    background-color: #45a049;
+}
+
+#merge-down:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
 } 

@@ -39,6 +39,109 @@ class KnittingGrid {
         this.canvas.addEventListener('mouseup', this.handleMouseUp.bind(this));
         this.canvas.addEventListener('mouseleave', this.handleMouseUp.bind(this));
         
+        // Track touch points and pinch state
+        let touchPoints = [];
+        let initialPinchDistance = 0;
+        let isPanning = false;
+        let lastPanPosition = null;
+
+        // Touch events for mobile/tablet support
+        this.canvas.addEventListener('touchstart', (e) => {
+            touchPoints = Array.from(e.touches);
+            
+            if (touchPoints.length === 1) {
+                // Single touch - handle as drawing
+                e.preventDefault(); // Prevent scrolling when drawing
+                const touch = touchPoints[0];
+                const mouseEvent = new MouseEvent('mousedown', {
+                    clientX: touch.clientX,
+                    clientY: touch.clientY
+                });
+                this.canvas.dispatchEvent(mouseEvent);
+            } else if (touchPoints.length === 2) {
+                // Two finger gesture - prepare for pan/zoom
+                e.preventDefault();
+                isPanning = true;
+                lastPanPosition = this.getMidpoint(touchPoints[0], touchPoints[1]);
+                initialPinchDistance = this.getPinchDistance(touchPoints[0], touchPoints[1]);
+            }
+        });
+
+        this.canvas.addEventListener('touchmove', (e) => {
+            touchPoints = Array.from(e.touches);
+            
+            if (touchPoints.length === 1 && !isPanning) {
+                // Single touch - handle as drawing
+                e.preventDefault();
+                const touch = touchPoints[0];
+                const mouseEvent = new MouseEvent('mousemove', {
+                    clientX: touch.clientX,
+                    clientY: touch.clientY,
+                    buttons: 1
+                });
+                this.canvas.dispatchEvent(mouseEvent);
+            } else if (touchPoints.length === 2) {
+                // Handle two-finger pan and zoom
+                e.preventDefault();
+                const currentMidpoint = this.getMidpoint(touchPoints[0], touchPoints[1]);
+                const currentDistance = this.getPinchDistance(touchPoints[0], touchPoints[1]);
+                
+                // Handle panning
+                if (lastPanPosition) {
+                    const deltaX = currentMidpoint.x - lastPanPosition.x;
+                    const deltaY = currentMidpoint.y - lastPanPosition.y;
+                    this.gridContainer.scrollLeft -= deltaX;
+                    this.gridContainer.scrollTop -= deltaY;
+                }
+                
+                // Handle pinch zoom
+                if (initialPinchDistance > 0) {
+                    const scale = currentDistance / initialPinchDistance;
+                    if (Math.abs(scale - 1) > 0.1) { // Add threshold to prevent tiny zoom adjustments
+                        if (scale > 1) {
+                            this.zoom(0.1);
+                        } else {
+                            this.zoom(-0.1);
+                        }
+                        initialPinchDistance = currentDistance; // Reset for next comparison
+                    }
+                }
+                
+                lastPanPosition = currentMidpoint;
+            }
+        });
+
+        this.canvas.addEventListener('touchend', (e) => {
+            if (e.touches.length === 0) {
+                // All fingers lifted
+                isPanning = false;
+                lastPanPosition = null;
+                initialPinchDistance = 0;
+                
+                if (touchPoints.length === 1) {
+                    // Only dispatch mouseup if we were drawing (single touch)
+                    e.preventDefault();
+                    const mouseEvent = new MouseEvent('mouseup', {});
+                    this.canvas.dispatchEvent(mouseEvent);
+                }
+            }
+            touchPoints = Array.from(e.touches);
+        });
+
+        // Helper functions for touch gestures
+        function getMidpoint(touch1, touch2) {
+            return {
+                x: (touch1.clientX + touch2.clientX) / 2,
+                y: (touch1.clientY + touch2.clientY) / 2
+            };
+        }
+
+        function getPinchDistance(touch1, touch2) {
+            const dx = touch1.clientX - touch2.clientX;
+            const dy = touch1.clientY - touch2.clientY;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+        
         // Keyboard events for shortcuts
         document.addEventListener('keydown', this.handleKeyDown.bind(this));
         
@@ -306,6 +409,12 @@ class KnittingGrid {
         // Select all (Ctrl+A)
         if (e.ctrlKey && e.key === 'a') {
             this.selectAll();
+        }
+        
+        // Support both Ctrl+Z (Windows/Linux) and Command+Z (Mac)
+        if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+            e.preventDefault();
+            this.app.undoManager.undo();
         }
     }
     
