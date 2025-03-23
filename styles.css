@@ -26,6 +26,10 @@ header {
     display: flex;
     gap: 2rem;
     align-items: flex-start;
+    position: relative;
+    min-height: 80px;
+    max-height: 300px;
+    overflow: hidden;
 }
 
 h1 {
@@ -374,18 +378,21 @@ footer p {
 
 /* Add styles for the horizontal tool layout */
 .top-controls {
-    flex: 1;
     display: flex;
-    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
     gap: 15px;
     margin-bottom: 0;
-    align-items: center;
+    overflow-y: hidden;
+    width: 100%;
+    padding-bottom: 15px;
 }
 
 .tool-section {
     display: flex;
     gap: 15px;
-    flex-wrap: wrap;
+    align-items: center;
+    width: auto;
 }
 
 .tool-group.horizontal {
@@ -396,6 +403,8 @@ footer p {
     padding: 8px 12px;
     border-radius: 4px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    flex: 1;
+    justify-content: space-between;
 }
 
 .tool-group.horizontal h3 {
@@ -461,4 +470,22 @@ footer p {
 .resizing {
     user-select: none;
     -webkit-user-select: none;
+}
+
+/* Add styles for the header resize handle */
+.header-resize-handle {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -5px;
+    height: 10px;
+    cursor: row-resize;
+    background: transparent;
+    transition: background 0.2s;
+    z-index: 10;
+}
+
+.header-resize-handle:hover,
+.header-resize-handle.active {
+    background: rgba(52, 152, 219, 0.2);
 } 

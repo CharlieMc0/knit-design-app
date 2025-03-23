@@ -59,6 +59,7 @@ class KnittingChartApp {
 
     setupEventListeners() {
         // Implementation of setupEventListeners method
+        this.setupHeaderResize();
     }
 
     setupToolbarResize() {
@@ -83,9 +84,59 @@ class KnittingChartApp {
             
             const width = startWidth + (e.pageX - startX);
             
-            // Constrain width between min and max values
-            if (width >= 180 && width <= 400) {
+            // Update constraints to match CSS
+            if (width >= 120 && width <= 400) {
                 toolbar.style.width = `${width}px`;
+                
+                // Force a re-render of the grid to adjust to new layout
+                if (this.grid) {
+                    this.grid.render();
+                }
+            }
+        });
+        
+        document.addEventListener('mouseup', () => {
+            if (isResizing) {
+                isResizing = false;
+                document.body.classList.remove('resizing');
+                handle.classList.remove('active');
+            }
+        });
+    }
+
+    setupHeaderResize() {
+        const header = document.querySelector('header');
+        const topControls = document.querySelector('.top-controls');
+        const handle = document.querySelector('.header-resize-handle');
+        let isResizing = false;
+        let startY;
+        let startHeight;
+        
+        handle.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            startY = e.pageY;
+            startHeight = parseInt(getComputedStyle(header).height, 10);
+            
+            // Add resizing class to prevent text selection
+            document.body.classList.add('resizing');
+            handle.classList.add('active');
+            
+            // Prevent default to avoid text selection
+            e.preventDefault();
+        });
+        
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+            
+            const height = startHeight + (e.pageY - startY);
+            
+            // Constrain height between min and max values
+            if (height >= 80 && height <= 300) {
+                header.style.height = `${height}px`;
+                
+                // Explicitly set the top-controls height to fill the header
+                // Subtract padding to ensure it fits
+                topControls.style.height = (height - 32) + 'px'; // 32px accounts for padding
                 
                 // Force a re-render of the grid to adjust to new layout
                 if (this.grid) {

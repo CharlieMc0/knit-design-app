@@ -2,263 +2,161 @@ class ShapeDrawer {
     constructor(grid) {
         this.grid = grid;
         this.isDrawing = false;
-        this.startPoint = null;
-        this.previewData = null;
+        this.startX = 0;
+        this.startY = 0;
         this.currentShape = null;
+        this.previewData = null;
+        this.fillShapes = false; // Default to outline-only
+        
+        // Set up event listener for fill toggle
+        document.getElementById('shape-fill-toggle').addEventListener('change', (e) => {
+            this.fillShapes = e.target.checked;
+        });
     }
     
     startDrawing(shape, x, y) {
         this.isDrawing = true;
-        this.startPoint = { x, y };
+        this.startX = x;
+        this.startY = y;
         this.currentShape = shape;
-        this.previewData = null;
     }
     
     updatePreview(x, y) {
         if (!this.isDrawing) return;
         
-        // Save current state for rendering preview
-        this.previewData = { 
-            startX: this.startPoint.x, 
-            startY: this.startPoint.y, 
-            endX: x, 
-            endY: y, 
-            shape: this.currentShape 
-        };
+        // Clear previous preview
+        this.previewData = [];
         
-        this.grid.render();
+        const color = this.grid.app.colorManager.selectedColor;
+        
+        if (this.currentShape === 'rectangle') {
+            this.drawRectangle(this.startX, this.startY, x, y, color);
+        } else if (this.currentShape === 'circle') {
+            this.drawCircle(this.startX, this.startY, x, y, color);
+        } else if (this.currentShape === 'line') {
+            this.drawLine(this.startX, this.startY, x, y, color);
+        }
     }
     
     finishDrawing(x, y) {
         if (!this.isDrawing) return;
         
-        // Save state for undo
-        this.grid.app.undoManager.saveState(`Draw ${this.currentShape}`);
-        
-        // Draw the appropriate shape based on shape type
-        if (this.currentShape === 'rectangle') {
-            this.drawRectangle(
-                this.startPoint.x, this.startPoint.y, 
-                x, y, 
-                this.grid.app.colorManager.selectedColor
-            );
-        } else if (this.currentShape === 'circle') {
-            this.drawCircle(
-                this.startPoint.x, this.startPoint.y, 
-                x, y, 
-                this.grid.app.colorManager.selectedColor
-            );
-        } else if (this.currentShape === 'line') {
-            this.drawLine(
-                this.startPoint.x, this.startPoint.y, 
-                x, y, 
-                this.grid.app.colorManager.selectedColor
-            );
-        }
-        
-        // Reset drawing state
         this.isDrawing = false;
-        this.startPoint = null;
+        this.updatePreview(x, y);
+        
+        // Apply preview to grid
+        this.previewData.forEach(cell => {
+            this.grid.setCellColor(cell.x, cell.y, cell.color);
+        });
+        
         this.previewData = null;
     }
     
-    setCellInLayer(x, y, color) {
-        // This method ensures cells are set in the active layer when using layers
-        if (this.grid.app.layerManager) {
-            const layer = this.grid.app.layerManager.getActiveLayer();
-            if (layer) {
-                layer.setCell(x, y, color);
-                return;
-            }
-        }
+    drawRectangle(x1, y1, x2, y2, color) {
+        // Ensure x1,y1 is the top-left and x2,y2 is the bottom-right
+        const [startX, endX] = x1 < x2 ? [x1, x2] : [x2, x1];
+        const [startY, endY] = y1 < y2 ? [y1, y2] : [y2, y1];
         
-        // Fall back to direct grid setting if no layer is active
-        this.grid.gridData[y][x] = color;
-    }
-    
-    // Add this method to render the shape preview
-    renderPreview() {
-        if (!this.previewData) return;
-        
-        // Get current context from grid
-        const ctx = this.grid.ctx;
-        const cellSize = this.grid.cellSize;
-        
-        // Use a semi-transparent preview color
-        ctx.fillStyle = this.grid.app.colorManager.selectedColor + '80'; // 50% opacity
-        
-        const { startX, startY, endX, endY, shape } = this.previewData;
-        
-        // Calculate grid positions for rendering
-        let worldStartX = startX;
-        let worldStartY = startY;
-        let worldEndX = endX;
-        let worldEndY = endY;
-        
-        // Convert to world coordinates if using layers
-        if (this.grid.app.layerManager) {
-            const layer = this.grid.app.layerManager.getActiveLayer();
-            if (layer) {
-                const startWorld = layer.localToWorld(startX, startY);
-                const endWorld = layer.localToWorld(endX, endY);
-                
-                worldStartX = startWorld.x;
-                worldStartY = startWorld.y;
-                worldEndX = endWorld.x;
-                worldEndY = endWorld.y;
-            }
-        }
-        
-        if (shape === 'rectangle') {
-            // Calculate the rectangle bounds
-            const x = Math.min(worldStartX, worldEndX);
-            const y = Math.min(worldStartY, worldEndY);
-            const width = Math.abs(worldEndX - worldStartX) + 1;
-            const height = Math.abs(worldEndY - worldStartY) + 1;
-            
-            // Draw rectangle preview
-            for (let i = 0; i < width; i++) {
-                for (let j = 0; j < height; j++) {
-                    ctx.fillRect(
-                        (x + i) * cellSize + 1, 
-                        (y + j) * cellSize + 1, 
-                        cellSize - 1, 
-                        cellSize - 1
-                    );
+        if (this.fillShapes) {
+            // Draw filled rectangle
+            for (let y = startY; y <= endY; y++) {
+                for (let x = startX; x <= endX; x++) {
+                    this.previewData.push({ x, y, color });
                 }
             }
-        } else if (shape === 'circle') {
-            // Calculate circle properties
-            const centerX = (worldStartX + worldEndX) / 2;
-            const centerY = (worldStartY + worldEndY) / 2;
-            const radiusX = Math.abs(worldEndX - worldStartX) / 2;
-            const radiusY = Math.abs(worldEndY - worldStartY) / 2;
+        } else {
+            // Draw outline only
+            for (let x = startX; x <= endX; x++) {
+                this.previewData.push({ x, y: startY, color }); // Top edge
+                this.previewData.push({ x, y: endY, color });   // Bottom edge
+            }
             
-            // Draw all cells within the ellipse
-            const left = Math.floor(centerX - radiusX - 1);
-            const right = Math.ceil(centerX + radiusX + 1);
-            const top = Math.floor(centerY - radiusY - 1);
-            const bottom = Math.ceil(centerY + radiusY + 1);
-            
-            for (let x = left; x <= right; x++) {
-                for (let y = top; y <= bottom; y++) {
-                    // Check if this cell is within the ellipse
-                    if (this.isPointInEllipse(x, y, centerX, centerY, radiusX, radiusY)) {
-                        ctx.fillRect(
-                            x * cellSize + 1, 
-                            y * cellSize + 1, 
-                            cellSize - 1, 
-                            cellSize - 1
-                        );
+            for (let y = startY + 1; y < endY; y++) {
+                this.previewData.push({ x: startX, y, color }); // Left edge
+                this.previewData.push({ x: endX, y, color });   // Right edge
+            }
+        }
+    }
+    
+    drawCircle(centerX, centerY, x2, y2, color) {
+        // Calculate radius based on distance from center to current point
+        const dx = x2 - centerX;
+        const dy = y2 - centerY;
+        const radius = Math.sqrt(dx * dx + dy * dy);
+        
+        // Scan a square area around the center
+        const scanSize = Math.ceil(radius) + 1;
+        
+        for (let y = centerY - scanSize; y <= centerY + scanSize; y++) {
+            for (let x = centerX - scanSize; x <= centerX + scanSize; x++) {
+                const distX = x - centerX;
+                const distY = y - centerY;
+                const distance = Math.sqrt(distX * distX + distY * distY);
+                
+                if (this.fillShapes) {
+                    // For filled circle, include all points within radius
+                    if (distance <= radius) {
+                        this.previewData.push({ x, y, color });
+                    }
+                } else {
+                    // For outline, include points close to the radius
+                    if (Math.abs(distance - radius) < 0.5) {
+                        this.previewData.push({ x, y, color });
                     }
                 }
             }
-        } else if (shape === 'line') {
-            // Draw line preview using Bresenham's algorithm
-            const points = this.getLinePoints(worldStartX, worldStartY, worldEndX, worldEndY);
-            points.forEach(point => {
-                ctx.fillRect(
-                    point.x * cellSize + 1, 
-                    point.y * cellSize + 1, 
-                    cellSize - 1, 
-                    cellSize - 1
-                );
-            });
         }
     }
     
-    // Keep the original shape drawing methods (drawRectangle, drawCircle, drawLine)
-    // but update them to use setCellInLayer instead of directly setting grid cells
-    
-    drawRectangle(startX, startY, endX, endY, color) {
-        // Calculate the rectangle bounds
-        const x1 = Math.min(startX, endX);
-        const y1 = Math.min(startY, endY);
-        const width = Math.abs(endX - startX) + 1;
-        const height = Math.abs(endY - startY) + 1;
-        
-        // Fill all cells within the rectangle
-        for (let i = 0; i < width; i++) {
-            for (let j = 0; j < height; j++) {
-                this.setCellInLayer(x1 + i, y1 + j, color);
-            }
-        }
-    }
-    
-    drawCircle(startX, startY, endX, endY, color) {
-        // Calculate ellipse properties
-        const centerX = (startX + endX) / 2;
-        const centerY = (startY + endY) / 2;
-        const radiusX = Math.abs(endX - startX) / 2;
-        const radiusY = Math.abs(endY - startY) / 2;
-        
-        // Draw all cells within the ellipse
-        const left = Math.floor(centerX - radiusX - 1);
-        const right = Math.ceil(centerX + radiusX + 1);
-        const top = Math.floor(centerY - radiusY - 1);
-        const bottom = Math.ceil(centerY + radiusY + 1);
-        
-        for (let x = left; x <= right; x++) {
-            for (let y = top; y <= bottom; y++) {
-                // Check if this cell is within the ellipse
-                if (this.isPointInEllipse(x, y, centerX, centerY, radiusX, radiusY)) {
-                    this.setCellInLayer(x, y, color);
-                }
-            }
-        }
-    }
-    
-    drawLine(startX, startY, endX, endY, color) {
-        // Use Bresenham's line algorithm to get all points on the line
-        const points = this.getLinePoints(startX, startY, endX, endY);
-        
-        // Set all points on the line
-        points.forEach(point => {
-            this.setCellInLayer(point.x, point.y, color);
-        });
-    }
-    
-    // Helper methods remain unchanged
-    isPointInEllipse(x, y, centerX, centerY, radiusX, radiusY) {
-        // Add small epsilon to avoid floating point precision issues
-        const epsilon = 0.5;
-        
-        if (radiusX <= 0 || radiusY <= 0) return false;
-        
-        const normalizedX = (x - centerX) / radiusX;
-        const normalizedY = (y - centerY) / radiusY;
-        
-        return normalizedX * normalizedX + normalizedY * normalizedY <= 1 + epsilon;
-    }
-    
-    getLinePoints(x0, y0, x1, y1) {
-        const points = [];
-        
+    drawLine(x1, y1, x2, y2, color) {
         // Bresenham's line algorithm
-        const dx = Math.abs(x1 - x0);
-        const dy = Math.abs(y1 - y0);
-        const sx = x0 < x1 ? 1 : -1;
-        const sy = y0 < y1 ? 1 : -1;
+        const dx = Math.abs(x2 - x1);
+        const dy = Math.abs(y2 - y1);
+        const sx = x1 < x2 ? 1 : -1;
+        const sy = y1 < y2 ? 1 : -1;
         let err = dx - dy;
         
+        let x = x1;
+        let y = y1;
+        
         while (true) {
-            points.push({ x: x0, y: y0 });
+            this.previewData.push({ x, y, color });
             
-            if (x0 === x1 && y0 === y1) break;
+            if (x === x2 && y === y2) break;
             
             const e2 = 2 * err;
             if (e2 > -dy) {
-                if (x0 === x1) break;
+                if (x === x2) break;
                 err -= dy;
-                x0 += sx;
+                x += sx;
             }
             if (e2 < dx) {
-                if (y0 === y1) break;
+                if (y === y2) break;
                 err += dx;
-                y0 += sy;
+                y += sy;
             }
         }
+    }
+    
+    renderPreview() {
+        if (!this.previewData) return;
         
-        return points;
+        const ctx = this.grid.ctx;
+        const cellSize = this.grid.cellSize;
+        
+        ctx.save();
+        
+        // Draw preview cells
+        this.previewData.forEach(cell => {
+            ctx.fillStyle = cell.color;
+            ctx.fillRect(
+                cell.x * cellSize + 1,
+                cell.y * cellSize + 1,
+                cellSize - 1,
+                cellSize - 1
+            );
+        });
+        
+        ctx.restore();
     }
 } 
