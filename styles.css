@@ -405,6 +405,7 @@ footer p {
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     flex: 1;
     justify-content: space-between;
+    height: 100px;
 }
 
 .tool-group.horizontal h3 {
@@ -431,6 +432,9 @@ footer p {
     display: flex;
     align-items: flex-end;
     gap: 10px;
+    flex: 1;
+    justify-content: space-between;
+    width: auto;
 }
 
 .stacked-input {
@@ -488,4 +492,11 @@ footer p {
 .header-resize-handle:hover,
 .header-resize-handle.active {
     background: rgba(52, 152, 219, 0.2);
+}
+
+.zoom-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: 10px;
 } 
