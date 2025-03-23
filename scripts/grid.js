@@ -14,6 +14,7 @@ class KnittingGrid {
         this.selectedCells = [];
         this.isSelecting = false;
         this.selectionStart = null;
+        this.showReflectionLines = false;
         
         this.initialize();
         this.setupEventListeners();
@@ -65,6 +66,12 @@ class KnittingGrid {
         // Load design button
         document.getElementById('load-design').addEventListener('click', () => {
             this.loadDesign();
+        });
+
+        // Add reflection lines toggle listener
+        document.getElementById('reflection-lines-toggle').addEventListener('change', (e) => {
+            this.showReflectionLines = e.target.checked;
+            this.render();
         });
     }
     
@@ -569,7 +576,10 @@ class KnittingGrid {
             }
         }
         
-        // Draw selection rectangle
+        // Draw reflection lines on top of everything except selection
+        this.drawReflectionLines();
+
+        // Draw selection rectangle (keep this after reflection lines)
         this.ctx.strokeStyle = '#3498db';
         this.ctx.lineWidth = 2;
         
@@ -766,7 +776,7 @@ class KnittingGrid {
                 // Position relative to the top-left of the selection
                 const localX = cell.x - minX;
                 const localY = cell.y - minY;
-                newLayer.setCell(localX, localY, color);
+                newLayer.cells[`${localX},${localY}`] = color;
             }
         });
         
@@ -793,5 +803,51 @@ class KnittingGrid {
             this.app.mirrorManager.liveUpdate) {
             this.app.mirrorManager.applyMirror();
         }
+    }
+
+    // Add this method to draw reflection lines
+    drawReflectionLines() {
+        if (!this.showReflectionLines) return;
+
+        const ctx = this.ctx;
+        ctx.save();
+        
+        // Set line style
+        ctx.strokeStyle = 'rgba(255, 0, 0, 0.3)'; // Semi-transparent red
+        ctx.lineWidth = 1;
+        ctx.setLineDash([5, 5]); // Dashed line
+
+        // Calculate grid dimensions (excluding labels)
+        const gridWidth = this.gridWidth * this.cellSize;
+        const gridHeight = this.gridHeight * this.cellSize;
+        
+        // Calculate center points of the actual grid area
+        const centerX = gridWidth / 2;
+        const centerY = gridHeight / 2;
+
+        // Draw vertical center line
+        ctx.beginPath();
+        ctx.moveTo(centerX, 0);
+        ctx.lineTo(centerX, gridHeight);
+        ctx.stroke();
+
+        // Draw horizontal center line
+        ctx.beginPath();
+        ctx.moveTo(0, centerY);
+        ctx.lineTo(gridWidth, centerY);
+        ctx.stroke();
+
+        // Draw diagonal lines
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(gridWidth, gridHeight);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(gridWidth, 0);
+        ctx.lineTo(0, gridHeight);
+        ctx.stroke();
+
+        ctx.restore();
     }
 } 
