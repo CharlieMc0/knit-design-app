@@ -16,10 +16,19 @@ class KnittingChartApp {
         // Store app reference
         window.app = this;
         
+        // Set pencil as the default tool and update UI
+        this._currentTool = 'pencil';
+        
+        // Remove 'active' class from all tools and add it only to pencil
+        document.querySelectorAll('.tool-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        document.getElementById('pencil-tool').classList.add('active');
+        
         // Initialize components with app reference
         this.grid = new KnittingGrid(this);
         this.colorManager = new ColorManager(this);
-        this.toolManager = new ToolManager();
+        this.toolManager = new ToolManager(this);
         this.shapeDrawer = new ShapeDrawer(this.grid);
         this.mirrorManager = new MirrorManager(this);
         this.exportManager = new ExportManager(this.grid);
@@ -28,9 +37,6 @@ class KnittingChartApp {
         
         // Clipboard data for copy/paste
         this.clipboardData = null;
-        
-        // Set current tool property for easy access
-        this._currentTool = this.toolManager.currentTool;
         
         // Update current tool when toolManager changes it
         const self = this;
@@ -52,6 +58,9 @@ class KnittingChartApp {
                 self.currentTool = value;
             }
         });
+
+        // Set pencil as the default tool
+        this.toolManager.selectTool('pencil-tool');
 
         this.setupEventListeners();
         this.setupToolbarResize();

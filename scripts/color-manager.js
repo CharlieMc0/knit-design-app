@@ -1,5 +1,6 @@
 class ColorManager {
-    constructor() {
+    constructor(app) {
+        this.app = app;
         this.colors = [
             '#000000', // Black
             '#FFFFFF', // White
@@ -108,5 +109,28 @@ class ColorManager {
                 swatch.classList.add('active');
             }
         });
+    }
+
+    renderPalette() {
+        const palette = document.getElementById('color-palette');
+        palette.innerHTML = ''; // Clear existing colors
+
+        this.colors.forEach(color => {
+            const swatch = document.createElement('div');
+            swatch.className = 'color-swatch';
+            swatch.style.backgroundColor = color;
+            swatch.addEventListener('click', () => {
+                this.selectedColor = color;
+                this.updateActiveSwatch(swatch);
+            });
+            palette.appendChild(swatch);
+        });
+    }
+
+    updateActiveSwatch(activeSwatch) {
+        document.querySelectorAll('.color-swatch').forEach(swatch => {
+            swatch.classList.remove('active');
+        });
+        activeSwatch.classList.add('active');
     }
 } 

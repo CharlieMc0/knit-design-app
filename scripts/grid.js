@@ -914,4 +914,23 @@ class KnittingGrid {
         // Trigger file selection
         fileInput.click();
     }
+
+    getCellCoordinates(event) {
+        const rect = this.canvas.getBoundingClientRect();
+        const scale = this.zoomLevel; // Use current zoom level
+        
+        // Calculate position considering the zoom and scroll position
+        const scrollLeft = this.canvas.parentElement.scrollLeft;
+        const scrollTop = this.canvas.parentElement.scrollTop;
+        
+        // Calculate the true canvas-relative position
+        const canvasX = (event.clientX - rect.left) / scale + scrollLeft;
+        const canvasY = (event.clientY - rect.top) / scale + scrollTop;
+        
+        // Convert to grid coordinates
+        const x = Math.floor(canvasX / this.cellSize);
+        const y = Math.floor(canvasY / this.cellSize);
+        
+        return { x, y };
+    }
 } 
