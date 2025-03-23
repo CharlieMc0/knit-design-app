@@ -12,14 +12,16 @@ class Layer {
     
     // Set a cell at layer-local coordinates
     setCell(x, y, color) {
-        const key = `${x},${y}`;
-        this.cells[key] = color;
+        if (color) {
+            this.cells[`${x},${y}`] = color;
+        } else {
+            delete this.cells[`${x},${y}`];
+        }
     }
     
     // Get a cell at layer-local coordinates
     getCell(x, y) {
-        const key = `${x},${y}`;
-        return this.cells[key] || null;
+        return this.cells[`${x},${y}`] || null;
     }
     
     // Clear all cells
@@ -28,10 +30,10 @@ class Layer {
     }
     
     // Convert grid (world) coordinates to layer-local coordinates
-    worldToLocal(gridX, gridY) {
+    worldToLocal(worldX, worldY) {
         return {
-            x: gridX - this.offsetX,
-            y: gridY - this.offsetY
+            x: worldX - this.offsetX,
+            y: worldY - this.offsetY
         };
     }
     
@@ -158,10 +160,8 @@ class LayerManager {
     }
     
     addLayer(name) {
-        // Make sure we're creating a proper Layer instance with all methods
         const layer = new Layer(this.nextLayerId++, name);
         this.layers.push(layer);
-        
         this.setActiveLayer(layer.id);
         this.renderLayersList();
         this.app.grid.render();

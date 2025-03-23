@@ -52,15 +52,9 @@ class KnittingGrid {
         // Clear grid button
         document.getElementById('clear-grid').addEventListener('click', this.clearGrid.bind(this));
         
-        // Copy and Paste buttons
-        document.getElementById('copy-selection').addEventListener('click', () => {
-            this.app.clipboardData = this.copySelection();
-            // Show feedback toast
-            this.showToast('Selection copied!');
-        });
-        
-        document.getElementById('paste-selection').addEventListener('click', () => {
-            this.pasteSelection();
+        // Replace Copy and Paste buttons with Copy To New Layer
+        document.getElementById('copy-to-new-layer').addEventListener('click', () => {
+            this.copyToNewLayer();
         });
         
         // Save design button
@@ -72,16 +66,24 @@ class KnittingGrid {
         document.getElementById('load-design').addEventListener('click', () => {
             this.loadDesign();
         });
+
+        // Oval tool button
+        document.getElementById('oval-tool').addEventListener('click', () => {
+            this.app.currentTool = 'oval';
+        });
     }
     
     handleMouseDown(e) {
-        // Use the new getCellCoordinates method instead of manual calculation
         const coords = this.getCellCoordinates(e);
         const gridX = coords.x;
         const gridY = coords.y;
         
         if (gridX < 0 || gridX >= this.gridWidth || gridY < 0 || gridY >= this.gridHeight) {
             return; // Out of bounds
+        }
+        
+        if (this.app.currentTool === 'oval') {
+            this.app.shapeDrawer.startDrawing('oval', gridX, gridY);
         }
         
         // If we're in layer drag mode, don't handle drawing
@@ -136,7 +138,6 @@ class KnittingGrid {
     }
     
     handleMouseMove(e) {
-        // Use the new getCellCoordinates method instead of manual calculation
         const coords = this.getCellCoordinates(e);
         const gridX = coords.x;
         const gridY = coords.y;
@@ -166,7 +167,7 @@ class KnittingGrid {
                         this.app.mirrorManager.liveUpdate) {
                         this.app.mirrorManager.applyMirror();
                     }
-                } else if (['rectangle', 'circle', 'line'].includes(this.app.currentTool) && 
+                } else if (['rectangle', 'circle', 'line', 'oval'].includes(this.app.currentTool) && 
                           this.app.shapeDrawer.isDrawing) {
                     this.app.shapeDrawer.updatePreview(localPos.x, localPos.y);
                 }
@@ -187,7 +188,7 @@ class KnittingGrid {
                 this.app.mirrorManager.liveUpdate) {
                 this.app.mirrorManager.applyMirror();
             }
-        } else if (['rectangle', 'circle', 'line'].includes(this.app.currentTool) && 
+        } else if (['rectangle', 'circle', 'line', 'oval'].includes(this.app.currentTool) && 
                   this.app.shapeDrawer.isDrawing) {
             this.app.shapeDrawer.updatePreview(gridX, gridY);
         }
@@ -201,10 +202,9 @@ class KnittingGrid {
         }
         
         // Finalize shape drawing
-        if (['rectangle', 'circle', 'line'].includes(this.app.currentTool) && 
+        if (['rectangle', 'circle', 'line', 'oval'].includes(this.app.currentTool) && 
             this.app.shapeDrawer && this.app.shapeDrawer.isDrawing) {
             
-            // Use the new getCellCoordinates method
             const coords = this.getCellCoordinates(e);
             const gridX = coords.x;
             const gridY = coords.y;
@@ -249,14 +249,10 @@ class KnittingGrid {
     }
     
     handleKeyDown(e) {
-        // Copy (Ctrl+C)
+        // Copy to new layer (Ctrl+C)
         if (e.ctrlKey && e.key === 'c') {
-            this.app.clipboardData = this.copySelection();
-        }
-        
-        // Paste (Ctrl+V)
-        if (e.ctrlKey && e.key === 'v') {
-            this.pasteSelection();
+            this.copyToNewLayer();
+            e.preventDefault();
         }
         
         // Delete (Delete key)
@@ -452,122 +448,6 @@ class KnittingGrid {
         this.render();
     }
     
-    copySelection() {
-        if (this.selectedCells.length === 0) {
-            // If no selection and we have a drawn shape, automatically select it
-            if (this.app.shapeDrawer && this.app.shapeDrawer.lastDrawnShape) {
-                this.selectedCells = [...this.app.shapeDrawer.lastDrawnShape];
-            }
-            
-            if (this.selectedCells.length === 0) return null;
-        }
-        
-        // Find boundaries of selection
-        let minX = this.gridWidth;
-        let minY = this.gridHeight;
-        let maxX = 0;
-        let maxY = 0;
-        
-        this.selectedCells.forEach(cell => {
-            minX = Math.min(minX, cell.x);
-            minY = Math.min(minY, cell.y);
-            maxX = Math.max(maxX, cell.x);
-            maxY = Math.max(maxY, cell.y);
-        });
-        
-        const width = maxX - minX + 1;
-        const height = maxY - minY + 1;
-        
-        // Create a copy of the selected area
-        const selectionData = Array(height).fill().map(() => Array(width).fill(null));
-        
-        this.selectedCells.forEach(cell => {
-            selectionData[cell.y - minY][cell.x - minX] = this.gridData[cell.y][cell.x];
-        });
-        
-        // Show a brief visual feedback that something was copied
-        this.showCopyFeedback();
-        
-        return {
-            data: selectionData,
-            width,
-            height
-        };
-    }
-    
-    showCopyFeedback() {
-        // Temporarily change the selection color to indicate copying
-        const originalStrokeStyle = this.ctx.strokeStyle;
-        this.ctx.strokeStyle = '#2ecc71'; // Green color for success
-        
-        this.selectedCells.forEach(cell => {
-            this.ctx.beginPath();
-            this.ctx.rect(
-                cell.x * this.cellSize + 1, 
-                cell.y * this.cellSize + 1, 
-                this.cellSize - 1, 
-                this.cellSize - 1
-            );
-            this.ctx.stroke();
-        });
-        
-        // Restore original stroke style after a short delay
-        setTimeout(() => {
-            this.ctx.strokeStyle = originalStrokeStyle;
-            this.render();
-        }, 300);
-    }
-    
-    pasteSelection() {
-        if (!this.app.clipboardData) return;
-        
-        // If there's a selection, paste at the top-left of the selection
-        let pasteX = 0;
-        let pasteY = 0;
-        
-        if (this.selectedCells.length > 0) {
-            const minX = Math.min(...this.selectedCells.map(cell => cell.x));
-            const minY = Math.min(...this.selectedCells.map(cell => cell.y));
-            pasteX = minX;
-            pasteY = minY;
-        }
-        
-        for (let y = 0; y < this.app.clipboardData.height; y++) {
-            for (let x = 0; x < this.app.clipboardData.width; x++) {
-                const targetX = pasteX + x;
-                const targetY = pasteY + y;
-                
-                if (targetX < this.gridWidth && targetY < this.gridHeight) {
-                    this.gridData[targetY][targetX] = this.app.clipboardData.data[y][x];
-                }
-            }
-        }
-        
-        this.render();
-        
-        // Apply mirror if active
-        if (this.app.mirrorManager.isActive() && this.app.mirrorManager.liveUpdate) {
-            this.app.mirrorManager.applyMirror();
-        }
-    }
-    
-    deleteSelection() {
-        if (this.selectedCells.length === 0) return;
-        
-        this.selectedCells.forEach(cell => {
-            if (cell.x >= 0 && cell.x < this.gridWidth && cell.y >= 0 && cell.y < this.gridHeight) {
-                this.gridData[cell.y][cell.x] = null;
-            }
-        });
-        
-        this.render();
-        
-        // Apply mirror if active
-        if (this.app.mirrorManager.isActive() && this.app.mirrorManager.liveUpdate) {
-            this.app.mirrorManager.applyMirror();
-        }
-    }
-    
     selectAll() {
         this.selectedCells = [];
         for (let y = 0; y < this.gridHeight; y++) {
@@ -656,23 +536,16 @@ class KnittingGrid {
         if (this.app.layerManager) {
             const visibleLayers = this.app.layerManager.getAllVisibleLayers();
             
-            // Render layers from bottom to top
             visibleLayers.forEach(layer => {
-                // Calculate opacity value (0-1)
                 const opacity = layer.opacity / 100;
                 this.ctx.globalAlpha = opacity;
                 
-                // Render cells from this layer
                 Object.entries(layer.cells).forEach(([key, color]) => {
                     if (!color) return;
                     
-                    // Parse x,y coordinates from the key
                     const [localX, localY] = key.split(',').map(Number);
-                    
-                    // Convert to world coordinates
                     const worldPos = layer.localToWorld(localX, localY);
                     
-                    // Only draw if within visible grid
                     if (worldPos.x >= 0 && worldPos.x < this.gridWidth && 
                         worldPos.y >= 0 && worldPos.y < this.gridHeight) {
                         this.ctx.fillStyle = color;
@@ -686,7 +559,6 @@ class KnittingGrid {
                 });
             });
             
-            // Reset opacity
             this.ctx.globalAlpha = 1;
         } else {
             // Draw filled cells when not using layers
@@ -874,5 +746,61 @@ class KnittingGrid {
         const y = Math.floor((event.clientY - rect.top - labelMargin) / (this.cellSize * this.zoomLevel));
         
         return { x, y };
+    }
+
+    copyToNewLayer() {
+        if (this.selectedCells.length === 0) {
+            this.showToast('No cells selected');
+            return;
+        }
+        
+        // Create a new layer
+        const newLayerName = `Copied Layer ${this.app.layerManager.nextLayerId}`;
+        this.app.layerManager.addLayer(newLayerName);
+        const newLayer = this.app.layerManager.getActiveLayer();
+        
+        // Find the boundaries of the selection
+        let minX = this.gridWidth;
+        let minY = this.gridHeight;
+        
+        this.selectedCells.forEach(cell => {
+            minX = Math.min(minX, cell.x);
+            minY = Math.min(minY, cell.y);
+        });
+        
+        // Copy the selected cells to the new layer
+        this.selectedCells.forEach(cell => {
+            const color = this.gridData[cell.y][cell.x];
+            if (color) {
+                // Position relative to the top-left of the selection
+                const localX = cell.x - minX;
+                const localY = cell.y - minY;
+                newLayer.setCell(localX, localY, color);
+            }
+        });
+        
+        this.app.layerManager.renderLayersList();
+        this.render();
+        this.showToast('Selection copied to new layer');
+    }
+
+    deleteSelection() {
+        if (this.selectedCells.length === 0) return;
+        
+        this.app.undoManager.saveState('Delete selection');
+        
+        this.selectedCells.forEach(cell => {
+            if (cell.x >= 0 && cell.x < this.gridWidth && cell.y >= 0 && cell.y < this.gridHeight) {
+                this.gridData[cell.y][cell.x] = null;
+            }
+        });
+        
+        this.render();
+        
+        // Apply mirror if active
+        if (this.app.mirrorManager && this.app.mirrorManager.isActive() && 
+            this.app.mirrorManager.liveUpdate) {
+            this.app.mirrorManager.applyMirror();
+        }
     }
 } 

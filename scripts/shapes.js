@@ -4,6 +4,8 @@ class ShapeDrawer {
         this.isDrawing = false;
         this.startX = 0;
         this.startY = 0;
+        this.endX = 0;
+        this.endY = 0;
         this.currentShape = null;
         this.previewData = null;
         this.fillShapes = false; // Default to outline-only
@@ -14,27 +16,21 @@ class ShapeDrawer {
         });
     }
     
-    startDrawing(shape, x, y) {
+    startDrawing(shape, startX, startY) {
         this.isDrawing = true;
-        this.startX = x;
-        this.startY = y;
         this.currentShape = shape;
+        this.startX = startX;
+        this.startY = startY;
     }
     
     updatePreview(x, y) {
         if (!this.isDrawing) return;
         
-        // Clear previous preview
-        this.previewData = [];
-        
-        const color = this.grid.app.colorManager.selectedColor;
-        
-        if (this.currentShape === 'rectangle') {
-            this.drawRectangle(this.startX, this.startY, x, y, color);
-        } else if (this.currentShape === 'circle') {
-            this.drawCircle(this.startX, this.startY, x, y, color);
-        } else if (this.currentShape === 'line') {
-            this.drawLine(this.startX, this.startY, x, y, color);
+        this.endX = x;
+        this.endY = y;
+
+        if (this.currentShape === 'oval') {
+            this.renderPreview();
         }
     }
     
@@ -44,12 +40,9 @@ class ShapeDrawer {
         this.isDrawing = false;
         this.updatePreview(x, y);
         
-        // Apply preview to grid
-        this.previewData.forEach(cell => {
-            this.grid.setCellColor(cell.x, cell.y, cell.color);
-        });
-        
-        this.previewData = null;
+        if (this.currentShape === 'oval') {
+            this.drawOval(this.startX, this.startY, this.endX, this.endY);
+        }
     }
     
     drawRectangle(x1, y1, x2, y2, color) {
@@ -138,25 +131,46 @@ class ShapeDrawer {
         }
     }
     
-    renderPreview() {
-        if (!this.previewData) return;
-        
+    drawOval(startX, startY, endX, endY) {
         const ctx = this.grid.ctx;
-        const cellSize = this.grid.cellSize;
-        
         ctx.save();
-        
-        // Draw preview cells
-        this.previewData.forEach(cell => {
-            ctx.fillStyle = cell.color;
-            ctx.fillRect(
-                cell.x * cellSize + 1,
-                cell.y * cellSize + 1,
-                cellSize - 1,
-                cellSize - 1
-            );
-        });
-        
+        ctx.strokeStyle = this.grid.app.colorManager.selectedColor;
+        ctx.lineWidth = 2;
+
+        const width = Math.abs(endX - startX) * this.grid.cellSize;
+        const height = Math.abs(endY - startY) * this.grid.cellSize;
+        const centerX = (startX + endX) / 2 * this.grid.cellSize;
+        const centerY = (startY + endY) / 2 * this.grid.cellSize;
+
+        ctx.beginPath();
+        ctx.ellipse(centerX, centerY, width / 2, height / 2, 0, 0, 2 * Math.PI);
+
+        if (this.fillShapes) {
+            ctx.fillStyle = this.grid.app.colorManager.selectedColor;
+            ctx.fill();
+        } else {
+            ctx.stroke();
+        }
+
+        ctx.restore();
+    }
+    
+    renderPreview() {
+        const ctx = this.grid.ctx;
+        ctx.save();
+        ctx.strokeStyle = '#0000ff'; // Blue color for preview
+        ctx.lineWidth = 1;
+        ctx.setLineDash([5, 5]);
+
+        const width = Math.abs(this.endX - this.startX) * this.grid.cellSize;
+        const height = Math.abs(this.endY - this.startY) * this.grid.cellSize;
+        const centerX = (this.startX + this.endX) / 2 * this.grid.cellSize;
+        const centerY = (this.startY + this.endY) / 2 * this.grid.cellSize;
+
+        ctx.beginPath();
+        ctx.ellipse(centerX, centerY, width / 2, height / 2, 0, 0, 2 * Math.PI);
+        ctx.stroke();
+
         ctx.restore();
     }
 } 
