@@ -75,15 +75,14 @@ button:hover {
 }
 
 .toolbar {
-    width: 200px;
-    background-color: #fff;
-    border-radius: 8px;
+    width: 220px;
     padding: 1rem;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    background-color: #f5f5f5;
+    border-right: 1px solid #ddd;
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
-    overflow-y: auto;
+    gap: 1rem;
 }
 
 .tool-group {
@@ -327,4 +326,104 @@ footer {
 
 .toast.show {
     transform: translateX(-50%) translateY(0);
+}
+
+/* Remove position arrows styles and replace with these */
+.layer-drag-info {
+    display: flex;
+    flex-direction: column;
+    margin-top: 10px;
+    gap: 5px;
+}
+
+#layer-drag-toggle {
+    padding: 8px;
+    background-color: #f1f1f1;
+    border: 1px solid #ddd;
+    cursor: pointer;
+}
+
+#layer-drag-toggle.active {
+    background-color: #e0f7fa;
+    border-color: #80deea;
+    color: #00838f;
+}
+
+.layer-position-display {
+    font-size: 12px;
+    color: #666;
+    text-align: center;
+    margin-top: 2px;
+}
+
+/* Add cursor styles for dragging */
+.canvas-container.layer-drag-mode {
+    cursor: move;
+}
+
+/* Add styles for the horizontal tool layout */
+.top-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 15px;
+    align-items: center;
+}
+
+.tool-section {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.tool-group.horizontal {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background-color: #f5f5f5;
+    padding: 8px 12px;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.tool-group.horizontal h3 {
+    margin: 0;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+.tool-buttons, .mirror-buttons {
+    display: flex;
+    gap: 5px;
+}
+
+.toggle-container {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-left: 10px;
+    font-size: 12px;
+}
+
+/* Add styles for stacked inputs in the grid controls */
+.grid-size-controls {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+}
+
+.stacked-input {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.stacked-input label {
+    font-size: 12px;
+    color: #666;
+}
+
+.stacked-input input {
+    width: 60px;
+    padding: 5px;
 } 

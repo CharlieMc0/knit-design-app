@@ -68,60 +68,60 @@ class KnittingGrid {
         const rect = this.canvas.getBoundingClientRect();
         const labelMargin = 20;
         
-        // Get raw coordinates (without layer offset)
-        let rawX = Math.floor((e.clientX - rect.left - labelMargin) / (this.cellSize * this.zoomLevel));
-        let rawY = Math.floor((e.clientY - rect.top - labelMargin) / (this.cellSize * this.zoomLevel));
+        // Get grid (world) coordinates from mouse position
+        let gridX = Math.floor((e.clientX - rect.left - labelMargin) / (this.cellSize * this.zoomLevel));
+        let gridY = Math.floor((e.clientY - rect.top - labelMargin) / (this.cellSize * this.zoomLevel));
         
-        if (rawX < 0 || rawX >= this.gridWidth || rawY < 0 || rawY >= this.gridHeight) {
+        if (gridX < 0 || gridX >= this.gridWidth || gridY < 0 || gridY >= this.gridHeight) {
             return; // Out of bounds
         }
         
-        // Apply layer position offset for drawing operations
+        // If we're in layer drag mode, don't handle drawing
+        if (this.app.layerManager && this.app.layerManager.dragMode) {
+            return;
+        }
+        
+        // Tools that need to know about the active layer
         if (this.app.layerManager && this.app.currentTool !== 'select') {
-            const activeLayer = this.app.layerManager.getActiveLayer();
-            if (activeLayer) {
-                // Calculate coordinates relative to the layer
-                let layerX = rawX - activeLayer.position.x;
-                let layerY = rawY - activeLayer.position.y;
+            const layer = this.app.layerManager.getActiveLayer();
+            if (layer) {
+                // Convert to layer-local coordinates
+                const localPos = layer.worldToLocal(gridX, gridY);
                 
-                // If within the layer's effective area
-                if (layerX >= 0 && layerX < this.gridWidth && 
-                    layerY >= 0 && layerY < this.gridHeight) {
-                    
-                    if (this.app.currentTool === 'pencil') {
-                        this.setCellColor(layerX, layerY, this.app.colorManager.selectedColor);
-                    } else if (this.app.currentTool === 'fill') {
-                        this.fillArea(layerX, layerY, this.app.colorManager.selectedColor);
-                    } else if (['rectangle', 'circle', 'line'].includes(this.app.currentTool)) {
-                        this.app.shapeDrawer.startDrawing(this.app.currentTool, layerX, layerY);
-                    }
-                    
-                    this.render();
-                    return;
+                // Handle drawing on this layer
+                if (this.app.currentTool === 'pencil') {
+                    this.setCellColor(localPos.x, localPos.y, this.app.colorManager.selectedColor);
+                } else if (this.app.currentTool === 'fill') {
+                    this.fillArea(localPos.x, localPos.y, this.app.colorManager.selectedColor);
+                } else if (['rectangle', 'circle', 'line'].includes(this.app.currentTool)) {
+                    this.app.shapeDrawer.startDrawing(this.app.currentTool, localPos.x, localPos.y);
                 }
+                
+                this.render();
+                return;
             }
         }
         
-        // Handle selection or drawing when not using layers or outside layer bounds
+        // Handle tools when not using layers or for selection
         if (this.app.currentTool === 'select') {
             this.isSelecting = true;
-            this.selectionStart = { x: rawX, y: rawY };
+            this.selectionStart = { x: gridX, y: gridY };
             
             // If shift is not pressed, clear previous selection
             if (!e.shiftKey) {
-                this.selectedCells = [{ x: rawX, y: rawY }];
+                this.selectedCells = [{ x: gridX, y: gridY }];
             } else {
                 // Add to existing selection
-                if (!this.isCellSelected(rawX, rawY)) {
-                    this.selectedCells.push({ x: rawX, y: rawY });
+                if (!this.isCellSelected(gridX, gridY)) {
+                    this.selectedCells.push({ x: gridX, y: gridY });
                 }
             }
         } else if (this.app.currentTool === 'pencil') {
-            this.setCellColor(rawX, rawY, this.app.colorManager.selectedColor);
+            this.setCellColor(gridX, gridY, this.app.colorManager.selectedColor);
         } else if (this.app.currentTool === 'fill') {
-            this.fillArea(rawX, rawY, this.app.colorManager.selectedColor);
+            this.fillArea(gridX, gridY, this.app.colorManager.selectedColor);
         } else if (['rectangle', 'circle', 'line'].includes(this.app.currentTool)) {
-            this.app.shapeDrawer.startDrawing(this.app.currentTool, rawX, rawY);
+            this.app.shapeDrawer.startDrawing(this.app.currentTool, gridX, gridY);
         }
         
         this.render();
@@ -131,57 +131,59 @@ class KnittingGrid {
         const rect = this.canvas.getBoundingClientRect();
         const labelMargin = 20;
         
-        // Get raw coordinates
-        let rawX = Math.floor((e.clientX - rect.left - labelMargin) / (this.cellSize * this.zoomLevel));
-        let rawY = Math.floor((e.clientY - rect.top - labelMargin) / (this.cellSize * this.zoomLevel));
+        // Get grid (world) coordinates from mouse position
+        let gridX = Math.floor((e.clientX - rect.left - labelMargin) / (this.cellSize * this.zoomLevel));
+        let gridY = Math.floor((e.clientY - rect.top - labelMargin) / (this.cellSize * this.zoomLevel));
         
-        if (rawX < 0 || rawX >= this.gridWidth || rawY < 0 || rawY >= this.gridHeight) {
+        if (gridX < 0 || gridX >= this.gridWidth || gridY < 0 || gridY >= this.gridHeight) {
             return; // Out of bounds
         }
         
-        // Apply layer position offset for drawing operations
+        // If we're in layer drag mode, don't handle drawing
+        if (this.app.layerManager && this.app.layerManager.dragMode) {
+            return;
+        }
+        
+        // Tools that need to know about the active layer
         if (this.app.layerManager && this.app.currentTool !== 'select' && e.buttons === 1) {
-            const activeLayer = this.app.layerManager.getActiveLayer();
-            if (activeLayer) {
-                // Calculate coordinates relative to the layer
-                let layerX = rawX - activeLayer.position.x;
-                let layerY = rawY - activeLayer.position.y;
+            const layer = this.app.layerManager.getActiveLayer();
+            if (layer) {
+                // Convert to layer-local coordinates
+                const localPos = layer.worldToLocal(gridX, gridY);
                 
-                // If within the layer's effective area
-                if (layerX >= 0 && layerX < this.gridWidth && 
-                    layerY >= 0 && layerY < this.gridHeight) {
+                // Handle drawing on this layer
+                if (this.app.currentTool === 'pencil') {
+                    this.setCellColor(localPos.x, localPos.y, this.app.colorManager.selectedColor);
                     
-                    if (this.app.currentTool === 'pencil') {
-                        this.setCellColor(layerX, layerY, this.app.colorManager.selectedColor);
-                        
-                        // Handle mirror if active
-                        if (this.app.mirrorManager.isActive() && this.app.mirrorManager.liveUpdate) {
-                            this.app.mirrorManager.applyMirror();
-                        }
-                    } else if (['rectangle', 'circle', 'line'].includes(this.app.currentTool) && 
-                              this.app.shapeDrawer.isDrawing) {
-                        this.app.shapeDrawer.updatePreview(layerX, layerY);
+                    // Apply mirror if active
+                    if (this.app.mirrorManager && this.app.mirrorManager.isActive() && 
+                        this.app.mirrorManager.liveUpdate) {
+                        this.app.mirrorManager.applyMirror();
                     }
-                    
-                    this.render();
-                    return;
+                } else if (['rectangle', 'circle', 'line'].includes(this.app.currentTool) && 
+                          this.app.shapeDrawer.isDrawing) {
+                    this.app.shapeDrawer.updatePreview(localPos.x, localPos.y);
                 }
+                
+                this.render();
+                return;
             }
         }
         
-        // Handle selection or drawing when not using layers
+        // Handle tools when not using layers
         if (this.isSelecting && this.app.currentTool === 'select') {
-            this.updateSelection(this.selectionStart.x, this.selectionStart.y, rawX, rawY, e.shiftKey);
+            this.updateSelection(this.selectionStart.x, this.selectionStart.y, gridX, gridY, e.shiftKey);
         } else if (this.app.currentTool === 'pencil' && e.buttons === 1) {
-            this.setCellColor(rawX, rawY, this.app.colorManager.selectedColor);
+            this.setCellColor(gridX, gridY, this.app.colorManager.selectedColor);
             
-            // Handle mirror if active
-            if (this.app.mirrorManager.isActive() && this.app.mirrorManager.liveUpdate) {
+            // Apply mirror if active
+            if (this.app.mirrorManager && this.app.mirrorManager.isActive() && 
+                this.app.mirrorManager.liveUpdate) {
                 this.app.mirrorManager.applyMirror();
             }
         } else if (['rectangle', 'circle', 'line'].includes(this.app.currentTool) && 
                   this.app.shapeDrawer.isDrawing) {
-            this.app.shapeDrawer.updatePreview(rawX, rawY);
+            this.app.shapeDrawer.updatePreview(gridX, gridY);
         }
         
         this.render();
@@ -193,38 +195,49 @@ class KnittingGrid {
         }
         
         // Finalize shape drawing
-        if (['rectangle', 'circle', 'line'].includes(this.app.currentTool) && this.app.shapeDrawer.isDrawing) {
+        if (['rectangle', 'circle', 'line'].includes(this.app.currentTool) && 
+            this.app.shapeDrawer && this.app.shapeDrawer.isDrawing) {
+            
             const rect = this.canvas.getBoundingClientRect();
             const labelMargin = 20;
             
-            let rawX = Math.floor((e.clientX - rect.left - labelMargin) / (this.cellSize * this.zoomLevel));
-            let rawY = Math.floor((e.clientY - rect.top - labelMargin) / (this.cellSize * this.zoomLevel));
+            let gridX = Math.floor((e.clientX - rect.left - labelMargin) / (this.cellSize * this.zoomLevel));
+            let gridY = Math.floor((e.clientY - rect.top - labelMargin) / (this.cellSize * this.zoomLevel));
+            
+            // If we're in layer drag mode, don't handle drawing
+            if (this.app.layerManager && this.app.layerManager.dragMode) {
+                this.app.shapeDrawer.isDrawing = false;
+                this.render();
+                return;
+            }
+            
+            // Check if within grid bounds
+            if (gridX < 0 || gridX >= this.gridWidth || gridY < 0 || gridY >= this.gridHeight) {
+                this.app.shapeDrawer.isDrawing = false;
+                this.render();
+                return;
+            }
             
             // Apply layer position offset for drawing operations
             if (this.app.layerManager) {
                 const activeLayer = this.app.layerManager.getActiveLayer();
                 if (activeLayer) {
-                    // Calculate coordinates relative to the layer
-                    let layerX = rawX - activeLayer.position.x;
-                    let layerY = rawY - activeLayer.position.y;
+                    // Convert to layer-local coordinates
+                    const localPos = activeLayer.worldToLocal(gridX, gridY);
                     
-                    if (layerX >= 0 && layerX < this.gridWidth && 
-                        layerY >= 0 && layerY < this.gridHeight) {
-                        this.app.shapeDrawer.finishDrawing(layerX, layerY);
-                    } else {
-                        this.app.shapeDrawer.finishDrawing(rawX, rawY);
-                    }
+                    this.app.shapeDrawer.finishDrawing(localPos.x, localPos.y);
                 } else {
-                    this.app.shapeDrawer.finishDrawing(rawX, rawY);
+                    this.app.shapeDrawer.finishDrawing(gridX, gridY);
                 }
             } else {
-                this.app.shapeDrawer.finishDrawing(rawX, rawY);
+                this.app.shapeDrawer.finishDrawing(gridX, gridY);
             }
             
             this.render();
             
             // Apply mirror if active
-            if (this.app.mirrorManager.isActive() && this.app.mirrorManager.liveUpdate) {
+            if (this.app.mirrorManager && this.app.mirrorManager.isActive() && 
+                this.app.mirrorManager.liveUpdate) {
                 this.app.mirrorManager.applyMirror();
             }
         }
@@ -276,33 +289,71 @@ class KnittingGrid {
     setCellColor(x, y, color) {
         if (x >= 0 && x < this.gridWidth && y >= 0 && y < this.gridHeight) {
             // Save state before making changes
-            if (this.gridData[y][x] !== color) {
-                this.app.undoManager.saveState('Change cell color');
-            }
+            this.app.undoManager.saveState('Change cell color');
             
-            // Update the grid data
-            this.gridData[y][x] = color;
-            
-            // Make sure the active layer data is synchronized 
-            // This ensures that when we draw directly, the layer data is updated
             if (this.app.layerManager) {
-                const activeLayer = this.app.layerManager.getActiveLayer();
-                if (activeLayer && activeLayer.data) {
-                    // Account for layer position offset
-                    const layerX = x + activeLayer.position.x;
-                    const layerY = y + activeLayer.position.y;
-                    
-                    // Ensure we're within bounds
-                    if (layerX >= 0 && layerX < activeLayer.data[0].length && 
-                        layerY >= 0 && layerY < activeLayer.data.length) {
-                        activeLayer.data[layerY][layerX] = color;
-                    }
+                // Apply to layer if available
+                const layer = this.app.layerManager.getActiveLayer();
+                if (layer) {
+                    layer.setCell(x, y, color);
+                    this.render();
+                    return;
                 }
             }
+            
+            // Fall back to direct grid data if no layer is active
+            this.gridData[y][x] = color;
+            this.render();
         }
     }
     
     fillArea(startX, startY, newColor) {
+        if (this.app.layerManager) {
+            const layer = this.app.layerManager.getActiveLayer();
+            if (layer) {
+                // Get the original color at this position
+                const startColor = layer.getCell(startX, startY);
+                
+                // Don't fill if already the same color
+                if (startColor === newColor) return;
+                
+                // Save state before making changes
+                this.app.undoManager.saveState('Fill area');
+                
+                // Use a recursive approach for filling
+                const visited = new Set();
+                const key = `${startX},${startY}`;
+                visited.add(key);
+                
+                const fillRecursive = (x, y) => {
+                    const currentKey = `${x},${y}`;
+                    
+                    // Skip if already visited
+                    if (visited.has(currentKey)) return;
+                    visited.add(currentKey);
+                    
+                    // Check current color
+                    const currentColor = layer.getCell(x, y);
+                    if (currentColor !== startColor) return;
+                    
+                    // Fill this cell
+                    layer.setCell(x, y, newColor);
+                    
+                    // Try filling adjacent cells
+                    fillRecursive(x + 1, y); // Right
+                    fillRecursive(x - 1, y); // Left
+                    fillRecursive(x, y + 1); // Down
+                    fillRecursive(x, y - 1); // Up
+                };
+                
+                // Start the fill
+                fillRecursive(startX, startY);
+                this.render();
+                return;
+            }
+        }
+        
+        // Original grid-based fill if not using layers
         const startColor = this.gridData[startY][startX];
         
         // Don't fill if already the same color
@@ -312,32 +363,32 @@ class KnittingGrid {
         this.app.undoManager.saveState('Fill area');
         
         const queue = [{ x: startX, y: startY }];
-        const visited = new Set();
+        const visited = Array(this.gridHeight).fill().map(() => 
+            Array(this.gridWidth).fill(false)
+        );
         
         while (queue.length > 0) {
             const { x, y } = queue.shift();
-            const key = `${x},${y}`;
             
-            if (visited.has(key)) continue;
-            if (x < 0 || x >= this.gridWidth || y < 0 || y >= this.gridHeight) continue;
+            // Skip if already visited or outside bounds
+            if (x < 0 || x >= this.gridWidth || y < 0 || y >= this.gridHeight || 
+                visited[y][x]) continue;
+            
+            // Only fill cells with the same color as the starting cell
             if (this.gridData[y][x] !== startColor) continue;
             
-            visited.add(key);
+            // Fill this cell
             this.gridData[y][x] = newColor;
+            visited[y][x] = true;
             
-            // Add adjacent cells to queue
-            queue.push({ x: x + 1, y });
-            queue.push({ x: x - 1, y });
-            queue.push({ x, y: y + 1 });
-            queue.push({ x, y: y - 1 });
+            // Add adjacent cells to the queue
+            queue.push({ x: x + 1, y: y }); // Right
+            queue.push({ x: x - 1, y: y }); // Left
+            queue.push({ x: x, y: y + 1 }); // Down
+            queue.push({ x: x, y: y - 1 }); // Up
         }
         
         this.render();
-        
-        // Apply mirror if active
-        if (this.app.mirrorManager.isActive() && this.app.mirrorManager.liveUpdate) {
-            this.app.mirrorManager.applyMirror();
-        }
     }
     
     resizeGrid() {
@@ -394,27 +445,18 @@ class KnittingGrid {
             if (confirmClear) {
                 // Clear all layers
                 this.app.layerManager.layers.forEach(layer => {
-                    layer.data = Array(this.gridHeight).fill().map(() => 
-                        Array(this.gridWidth).fill(null)
-                    );
+                    layer.clearCells();
                 });
                 
-                // Also clear the active grid data
+                // Also clear the grid data
                 this.gridData = Array(this.gridHeight).fill().map(() => 
                     Array(this.gridWidth).fill(null)
                 );
             } else {
                 // Clear only active layer
-                this.gridData = Array(this.gridHeight).fill().map(() => 
-                    Array(this.gridWidth).fill(null)
-                );
-                
-                // Update the active layer data
-                const activeLayer = this.app.layerManager.getActiveLayer();
-                if (activeLayer) {
-                    activeLayer.data = Array(this.gridHeight).fill().map(() => 
-                        Array(this.gridWidth).fill(null)
-                    );
+                const layer = this.app.layerManager.getActiveLayer();
+                if (layer) {
+                    layer.clearCells();
                 }
             }
         } else {
@@ -630,60 +672,41 @@ class KnittingGrid {
         // Draw all visible layers
         if (this.app.layerManager) {
             const visibleLayers = this.app.layerManager.getAllVisibleLayers();
-            const activeLayer = this.app.layerManager.getActiveLayer();
-            
-            // Make sure we're rendering the most up-to-date data for active layer
-            if (activeLayer) {
-                for (let i = 0; i < visibleLayers.length; i++) {
-                    if (visibleLayers[i].id === activeLayer.id) {
-                        // Use the current grid data for the active layer when rendering
-                        visibleLayers[i].data = this.gridData;
-                        break;
-                    }
-                }
-            }
             
             // Render layers from bottom to top
             visibleLayers.forEach(layer => {
-                if (!layer.data) return;
-                
                 // Calculate opacity value (0-1)
                 const opacity = layer.opacity / 100;
+                this.ctx.globalAlpha = opacity;
                 
-                // Render this layer's cells
-                for (let y = 0; y < this.gridHeight; y++) {
-                    for (let x = 0; x < this.gridWidth; x++) {
-                        // Account for layer position offset
-                        const sourceX = x - layer.position.x;
-                        const sourceY = y - layer.position.y;
-                        
-                        // Skip if outside the layer data bounds
-                        if (sourceX < 0 || sourceY < 0 || 
-                            sourceX >= layer.data[0].length || 
-                            sourceY >= layer.data.length) {
-                            continue;
-                        }
-                        
-                        const cellColor = layer.data[sourceY][sourceX];
-                        if (cellColor) {
-                            // Use opacity for non-active layers
-                            this.ctx.globalAlpha = opacity;
-                            this.ctx.fillStyle = cellColor;
-                            this.ctx.fillRect(
-                                x * this.cellSize + 1, 
-                                y * this.cellSize + 1, 
-                                this.cellSize - 1, 
-                                this.cellSize - 1
-                            );
-                        }
+                // Render cells from this layer
+                Object.entries(layer.cells).forEach(([key, color]) => {
+                    if (!color) return;
+                    
+                    // Parse x,y coordinates from the key
+                    const [localX, localY] = key.split(',').map(Number);
+                    
+                    // Convert to world coordinates
+                    const worldPos = layer.localToWorld(localX, localY);
+                    
+                    // Only draw if within visible grid
+                    if (worldPos.x >= 0 && worldPos.x < this.gridWidth && 
+                        worldPos.y >= 0 && worldPos.y < this.gridHeight) {
+                        this.ctx.fillStyle = color;
+                        this.ctx.fillRect(
+                            worldPos.x * this.cellSize + 1, 
+                            worldPos.y * this.cellSize + 1, 
+                            this.cellSize - 1, 
+                            this.cellSize - 1
+                        );
                     }
-                }
-                
-                // Reset opacity
-                this.ctx.globalAlpha = 1;
+                });
             });
+            
+            // Reset opacity
+            this.ctx.globalAlpha = 1;
         } else {
-            // Draw filled cells
+            // Draw filled cells when not using layers
             for (let y = 0; y < this.gridHeight; y++) {
                 for (let x = 0; x < this.gridWidth; x++) {
                     const cellColor = this.gridData[y][x];

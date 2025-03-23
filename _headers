@@ -1,0 +1,25 @@
+# Default headers for all files
+/*
+  Cache-Control: public, max-age=600
+  Access-Control-Allow-Origin: *
+  Content-Security-Policy: default-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline'
+
+# Specific headers for HTML files
+/*.html
+  Content-Type: text/html; charset=UTF-8
+
+# Specific headers for CSS files
+/*.css
+  Content-Type: text/css; charset=UTF-8
+
+# Specific headers for JavaScript files
+/*.js
+  Content-Type: application/javascript; charset=UTF-8
+
+# Specific headers for image files (if you have any)
+*.png
+  Cache-Control: public, max-age=86400
+*.jpg
+  Cache-Control: public, max-age=86400
+*.gif
+  Cache-Control: public, max-age=86400

@@ -4,9 +4,43 @@ class Layer {
         this.name = name;
         this.visible = true;
         this.opacity = 100;
-        this.data = []; // Will store the cells for this layer
-        this.position = { x: 0, y: 0 }; // Position offset
+        this.offsetX = 0; // Position offset X
+        this.offsetY = 0; // Position offset Y
+        this.cells = {};  // Store cells in a sparse object format using "x,y" keys
         this.selected = false;
+    }
+    
+    // Set a cell at layer-local coordinates
+    setCell(x, y, color) {
+        const key = `${x},${y}`;
+        this.cells[key] = color;
+    }
+    
+    // Get a cell at layer-local coordinates
+    getCell(x, y) {
+        const key = `${x},${y}`;
+        return this.cells[key] || null;
+    }
+    
+    // Clear all cells
+    clearCells() {
+        this.cells = {};
+    }
+    
+    // Convert grid (world) coordinates to layer-local coordinates
+    worldToLocal(gridX, gridY) {
+        return {
+            x: gridX - this.offsetX,
+            y: gridY - this.offsetY
+        };
+    }
+    
+    // Convert layer-local coordinates to grid (world) coordinates
+    localToWorld(localX, localY) {
+        return {
+            x: localX + this.offsetX,
+            y: localY + this.offsetY
+        };
     }
 }
 
@@ -16,6 +50,9 @@ class LayerManager {
         this.layers = [];
         this.activeLayerId = null;
         this.nextLayerId = 1;
+        this.dragMode = false; // Track if we're in layer drag mode
+        this.isDragging = false; // Track active dragging
+        this.dragStart = { x: 0, y: 0 }; // Start position for drag
         
         // Create default layer
         this.addLayer('Background');
@@ -49,64 +86,85 @@ class LayerManager {
             });
         }
         
-        // Layer position inputs
-        const layerXInput = document.getElementById('layer-x');
-        const layerYInput = document.getElementById('layer-y');
-        
-        if (layerXInput && layerYInput) {
-            layerXInput.addEventListener('change', (e) => {
-                const layer = this.getActiveLayer();
-                if (layer) {
-                    layer.position.x = parseInt(e.target.value);
-                    this.app.grid.render();
-                }
+        // Layer drag toggle button
+        const dragToggleBtn = document.getElementById('layer-drag-toggle');
+        if (dragToggleBtn) {
+            dragToggleBtn.addEventListener('click', () => {
+                this.toggleDragMode();
             });
+        }
+        
+        // Add drag event handlers to the canvas
+        const canvas = this.app.grid.canvas;
+        const canvasContainer = document.querySelector('.canvas-container');
+        
+        canvas.addEventListener('mousedown', (e) => {
+            if (!this.dragMode) return;
             
-            layerYInput.addEventListener('change', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const labelMargin = 20;
+            
+            // Get mouse position in grid coordinates
+            const mouseX = Math.floor((e.clientX - rect.left - labelMargin) / this.app.grid.cellSize);
+            const mouseY = Math.floor((e.clientY - rect.top - labelMargin) / this.app.grid.cellSize);
+            
+            this.isDragging = true;
+            this.dragStart = { x: mouseX, y: mouseY };
+            
+            // Prevent default to avoid selection
+            e.preventDefault();
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            if (!this.isDragging) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const labelMargin = 20;
+            
+            // Get current mouse position
+            const mouseX = Math.floor((e.clientX - rect.left - labelMargin) / this.app.grid.cellSize);
+            const mouseY = Math.floor((e.clientY - rect.top - labelMargin) / this.app.grid.cellSize);
+            
+            // Calculate the movement delta
+            const deltaX = mouseX - this.dragStart.x;
+            const deltaY = mouseY - this.dragStart.y;
+            
+            if (deltaX !== 0 || deltaY !== 0) {
+                // Move the active layer
                 const layer = this.getActiveLayer();
                 if (layer) {
-                    layer.position.y = parseInt(e.target.value);
+                    layer.offsetX += deltaX;
+                    layer.offsetY += deltaY;
+                    
+                    // Update the position display
+                    this.updatePositionDisplay();
+                    
+                    // Update drag start for next movement
+                    this.dragStart = { x: mouseX, y: mouseY };
+                    
+                    // Redraw
                     this.app.grid.render();
                 }
-            });
-        }
+            }
+        });
         
-        // Arrow movement buttons
-        const moveUpBtn = document.getElementById('layer-move-up');
-        const moveDownBtn = document.getElementById('layer-move-down');
-        const moveLeftBtn = document.getElementById('layer-move-left');
-        const moveRightBtn = document.getElementById('layer-move-right');
+        canvas.addEventListener('mouseup', () => {
+            this.isDragging = false;
+        });
         
-        if (moveUpBtn) {
-            moveUpBtn.addEventListener('click', () => this.moveActiveLayer(0, -1));
-        }
-        
-        if (moveDownBtn) {
-            moveDownBtn.addEventListener('click', () => this.moveActiveLayer(0, 1));
-        }
-        
-        if (moveLeftBtn) {
-            moveLeftBtn.addEventListener('click', () => this.moveActiveLayer(-1, 0));
-        }
-        
-        if (moveRightBtn) {
-            moveRightBtn.addEventListener('click', () => this.moveActiveLayer(1, 0));
-        }
+        canvas.addEventListener('mouseleave', () => {
+            this.isDragging = false;
+        });
     }
     
     addLayer(name) {
+        // Make sure we're creating a proper Layer instance with all methods
         const layer = new Layer(this.nextLayerId++, name);
         this.layers.push(layer);
         
-        // Initialize with empty data
-        layer.data = Array(this.app.grid.gridHeight).fill().map(() => 
-            Array(this.app.grid.gridWidth).fill(null)
-        );
-        
         this.setActiveLayer(layer.id);
         this.renderLayersList();
-        
-        return layer;
+        this.app.grid.render();
     }
     
     deleteActiveLayer() {
@@ -127,9 +185,6 @@ class LayerManager {
     }
     
     setActiveLayer(layerId) {
-        // Save current active layer's grid data first
-        this.saveCurrentLayerData();
-        
         // Update active layer
         this.activeLayerId = layerId;
         
@@ -138,36 +193,38 @@ class LayerManager {
             layer.selected = (layer.id === layerId);
         });
         
-        // Load this layer's data into the main grid
-        this.loadActiveLayerData();
-        
         // Update UI
         this.renderLayersList();
         this.updateLayerControls();
+        
+        // Redraw with new active layer
+        this.app.grid.render();
     }
     
     getActiveLayer() {
         return this.layers.find(layer => layer.id === this.activeLayerId);
     }
     
-    saveCurrentLayerData() {
-        const activeLayer = this.getActiveLayer();
-        if (activeLayer) {
-            // Deep copy the grid data to this layer
-            activeLayer.data = JSON.parse(JSON.stringify(this.app.grid.gridData));
+    // Method to set a cell color on the active layer
+    setCellOnActiveLayer(localX, localY, color) {
+        const layer = this.getActiveLayer();
+        if (layer) {
+            layer.setCell(localX, localY, color);
             
-            // Force a re-render to show changes
+            // Force a render to see the changes
             this.app.grid.render();
+            return true;
         }
+        return false;
     }
     
-    loadActiveLayerData() {
-        const activeLayer = this.getActiveLayer();
-        if (activeLayer && activeLayer.data) {
-            // Deep copy this layer's data to the grid
-            this.app.grid.gridData = JSON.parse(JSON.stringify(activeLayer.data));
-            this.app.grid.render();
+    // Convert grid (world) coordinates to local coordinates for the active layer
+    activeLayerGridToLocal(gridX, gridY) {
+        const layer = this.getActiveLayer();
+        if (layer) {
+            return layer.worldToLocal(gridX, gridY);
         }
+        return { x: gridX, y: gridY };
     }
     
     toggleLayerVisibility(layerId) {
@@ -226,33 +283,40 @@ class LayerManager {
         if (!layer) return;
         
         const opacitySlider = document.getElementById('layer-opacity');
-        const layerXInput = document.getElementById('layer-x');
-        const layerYInput = document.getElementById('layer-y');
         
         if (opacitySlider) opacitySlider.value = layer.opacity;
-        if (layerXInput) layerXInput.value = layer.position.x;
-        if (layerYInput) layerYInput.value = layer.position.y;
     }
     
     getAllVisibleLayers() {
         return this.layers.filter(layer => layer.visible);
     }
     
-    moveActiveLayer(deltaX, deltaY) {
+    toggleDragMode() {
+        this.dragMode = !this.dragMode;
+        
+        // Toggle the button appearance
+        const dragToggleBtn = document.getElementById('layer-drag-toggle');
+        if (dragToggleBtn) {
+            dragToggleBtn.classList.toggle('active', this.dragMode);
+        }
+        
+        // Toggle cursor style on canvas container
+        const canvasContainer = document.querySelector('.canvas-container');
+        if (canvasContainer) {
+            canvasContainer.classList.toggle('layer-drag-mode', this.dragMode);
+        }
+        
+        // Show current position
+        this.updatePositionDisplay();
+    }
+    
+    updatePositionDisplay() {
         const layer = this.getActiveLayer();
-        if (layer) {
-            layer.position.x += deltaX;
-            layer.position.y += deltaY;
-            
-            // Update input fields
-            const layerXInput = document.getElementById('layer-x');
-            const layerYInput = document.getElementById('layer-y');
-            
-            if (layerXInput) layerXInput.value = layer.position.x;
-            if (layerYInput) layerYInput.value = layer.position.y;
-            
-            // Render changes
-            this.app.grid.render();
+        const posDisplay = document.querySelector('.layer-position-display');
+        
+        if (layer && posDisplay) {
+            posDisplay.textContent = this.dragMode ? 
+                `Position: X:${layer.offsetX}, Y:${layer.offsetY}` : '';
         }
     }
 } 
