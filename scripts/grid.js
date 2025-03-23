@@ -73,6 +73,11 @@ class KnittingGrid {
             this.showReflectionLines = e.target.checked;
             this.render();
         });
+
+        // Add eraser tool button listener
+        document.getElementById('eraser-tool').addEventListener('click', () => {
+            this.app.currentTool = 'eraser';
+        });
     }
     
     handleMouseDown(e) {
@@ -99,6 +104,8 @@ class KnittingGrid {
                 // Handle drawing on this layer
                 if (this.app.currentTool === 'pencil') {
                     this.setCellColor(localPos.x, localPos.y, this.app.colorManager.selectedColor);
+                } else if (this.app.currentTool === 'eraser') {
+                    this.eraseCellAt(localPos.x, localPos.y);
                 } else if (this.app.currentTool === 'fill') {
                     this.fillArea(localPos.x, localPos.y, this.app.colorManager.selectedColor);
                 } else if (['rectangle', 'circle', 'line'].includes(this.app.currentTool)) {
@@ -126,6 +133,8 @@ class KnittingGrid {
             }
         } else if (this.app.currentTool === 'pencil') {
             this.setCellColor(gridX, gridY, this.app.colorManager.selectedColor);
+        } else if (this.app.currentTool === 'eraser') {
+            this.eraseCellAt(gridX, gridY);
         } else if (this.app.currentTool === 'fill') {
             this.fillArea(gridX, gridY, this.app.colorManager.selectedColor);
         } else if (['rectangle', 'circle', 'line'].includes(this.app.currentTool)) {
@@ -165,6 +174,8 @@ class KnittingGrid {
                         this.app.mirrorManager.liveUpdate) {
                         this.app.mirrorManager.applyMirror();
                     }
+                } else if (this.app.currentTool === 'eraser') {
+                    this.eraseCellAt(localPos.x, localPos.y);
                 } else if (['rectangle', 'circle', 'line'].includes(this.app.currentTool) && 
                           this.app.shapeDrawer.isDrawing) {
                     this.app.shapeDrawer.updatePreview(localPos.x, localPos.y);
@@ -178,8 +189,12 @@ class KnittingGrid {
         // Handle tools when not using layers
         if (this.isSelecting && this.app.currentTool === 'select') {
             this.updateSelection(this.selectionStart.x, this.selectionStart.y, gridX, gridY, e.shiftKey);
-        } else if (this.app.currentTool === 'pencil' && e.buttons === 1) {
-            this.setCellColor(gridX, gridY, this.app.colorManager.selectedColor);
+        } else if ((this.app.currentTool === 'pencil' || this.app.currentTool === 'eraser') && e.buttons === 1) {
+            if (this.app.currentTool === 'eraser') {
+                this.eraseCellAt(gridX, gridY);
+            } else {
+                this.setCellColor(gridX, gridY, this.app.colorManager.selectedColor);
+            }
             
             // Apply mirror if active
             if (this.app.mirrorManager && this.app.mirrorManager.isActive() && 
@@ -846,13 +861,13 @@ class KnittingGrid {
         ctx.lineWidth = 1;
         ctx.setLineDash([5, 5]); // Dashed line
 
-        // Calculate grid dimensions (excluding labels)
+        // Calculate grid dimensions
         const gridWidth = this.gridWidth * this.cellSize;
         const gridHeight = this.gridHeight * this.cellSize;
         
-        // Calculate center points of the actual grid area
-        const centerX = gridWidth / 2;
-        const centerY = gridHeight / 2;
+        // Calculate center points - handle even/odd grid dimensions properly
+        const centerX = Math.floor(this.gridWidth / 2) * this.cellSize;
+        const centerY = Math.floor(this.gridHeight / 2) * this.cellSize;
 
         // Draw vertical center line
         ctx.beginPath();
@@ -878,5 +893,50 @@ class KnittingGrid {
         ctx.stroke();
 
         ctx.restore();
+    }
+
+    // Add new method for erasing
+    eraseCellAt(x, y) {
+        if (this.app.layerManager) {
+            const layer = this.app.layerManager.getActiveLayer();
+            if (layer) {
+                // Save state before making changes
+                this.app.undoManager.saveState('Erase cell');
+                
+                // Use world coordinates for the layer
+                const worldKey = `${x},${y}`;
+                if (layer.cells[worldKey]) {
+                    delete layer.cells[worldKey];
+                    
+                    // Apply mirror if active and live update is enabled
+                    if (this.app.mirrorManager && 
+                        this.app.mirrorManager.isActive() && 
+                        this.app.mirrorManager.liveUpdate) {
+                        this.app.mirrorManager.applyMirror();
+                    }
+                    
+                    this.render();
+                }
+                return;
+            }
+        }
+        
+        // If not using layers or no active layer
+        if (x >= 0 && x < this.gridWidth && y >= 0 && y < this.gridHeight) {
+            // Save state before making changes
+            if (this.gridData[y][x] !== null) {
+                this.app.undoManager.saveState('Erase cell');
+                this.gridData[y][x] = null;
+                
+                // Apply mirror if active
+                if (this.app.mirrorManager && 
+                    this.app.mirrorManager.isActive() && 
+                    this.app.mirrorManager.liveUpdate) {
+                    this.app.mirrorManager.applyMirror();
+                }
+                
+                this.render();
+            }
+        }
     }
 } 

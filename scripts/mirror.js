@@ -62,139 +62,103 @@ class MirrorManager {
     }
     
     applyMirror() {
-        if (!this.isActive() || !this.app || !this.app.grid) return;
+        // Save state before making changes
+        this.app.undoManager.saveState('Apply mirror');
         
-        if (this.app.layerManager) {
-            const activeLayer = this.app.layerManager.getActiveLayer();
-            if (activeLayer) {
-                // Create a copy of the current cells to avoid modification during iteration
-                const originalCells = {...activeLayer.cells};
-                
-                // Mirror the cells
-                this.mirrorLayerCells(activeLayer, originalCells);
-                this.app.grid.render();
-                return;
-            }
-        }
+        // Make a copy of the grid data or get visible cells from all layers
+        const cellData = this.getCellData();
         
-        // If not using layers, mirror the grid data
-        this.mirrorGridData();
-        this.app.grid.render();
-    }
-    
-    mirrorLayerCells(layer, originalCells) {
-        // Use the center of the grid for mirroring, not just the cell bounds
+        // Calculate center points for mirroring
         const centerX = Math.floor(this.app.grid.gridWidth / 2);
         const centerY = Math.floor(this.app.grid.gridHeight / 2);
         
         // Apply horizontal mirroring
         if (this.horizontalActive) {
-            Object.entries(originalCells).forEach(([key, color]) => {
-                if (!color) return;
-                
-                const [x, y] = key.split(',').map(Number);
-                const mirroredX = 2 * centerX - x;
-                
-                // Set the mirrored cell
-                layer.setCell(mirroredX, y, color);
-            });
+            // Process only cells from the left half (priority)
+            for (let y = 0; y < this.app.grid.gridHeight; y++) {
+                for (let x = 0; x < centerX; x++) {
+                    const color = this.getCellColor(cellData, x, y);
+                    if (color) {
+                        const mirrorX = 2 * centerX - x - 1;
+                        if (mirrorX >= 0 && mirrorX < this.app.grid.gridWidth) {
+                            this.setCellColor(mirrorX, y, color);
+                        }
+                    }
+                }
+            }
         }
         
         // Apply vertical mirroring
         if (this.verticalActive) {
-            Object.entries(originalCells).forEach(([key, color]) => {
-                if (!color) return;
-                
-                const [x, y] = key.split(',').map(Number);
-                const mirroredY = 2 * centerY - y;
-                
-                // Set the mirrored cell
-                layer.setCell(x, mirroredY, color);
-            });
+            // Process only cells from the top half (priority)
+            for (let y = 0; y < centerY; y++) {
+                for (let x = 0; x < this.app.grid.gridWidth; x++) {
+                    const color = this.getCellColor(cellData, x, y);
+                    if (color) {
+                        const mirrorY = 2 * centerY - y - 1;
+                        if (mirrorY >= 0 && mirrorY < this.app.grid.gridHeight) {
+                            this.setCellColor(x, mirrorY, color);
+                        }
+                    }
+                }
+            }
         }
         
         // Apply diagonal mirroring
         if (this.diagonalActive) {
-            Object.entries(originalCells).forEach(([key, color]) => {
-                if (!color) return;
-                
-                const [x, y] = key.split(',').map(Number);
-                
-                // Using relative displacement from center
-                const dx = x - centerX;
-                const dy = y - centerY;
-                
-                // Swap dx and dy for diagonal mirroring
-                const mirroredX = centerX + dy;
-                const mirroredY = centerY + dx;
-                
-                // Set the mirrored cell
-                layer.setCell(mirroredX, mirroredY, color);
-            });
+            // Process only cells from the upper-left to diagonal
+            for (let y = 0; y < this.app.grid.gridHeight; y++) {
+                for (let x = 0; x < this.app.grid.gridWidth; x++) {
+                    // Only process cells above the diagonal (top-left priority)
+                    if (x + y < centerX + centerY) {
+                        const color = this.getCellColor(cellData, x, y);
+                        if (color) {
+                            // Swap x and y for diagonal reflection
+                            const mirrorX = centerX + (y - centerY);
+                            const mirrorY = centerY + (x - centerX);
+                            if (mirrorX >= 0 && mirrorX < this.app.grid.gridWidth && 
+                                mirrorY >= 0 && mirrorY < this.app.grid.gridHeight) {
+                                this.setCellColor(mirrorX, mirrorY, color);
+                            }
+                        }
+                    }
+                }
+            }
         }
+        
+        this.app.grid.render();
     }
     
-    mirrorGridData() {
-        if (!this.app || !this.app.grid) return;
-        
-        const grid = this.app.grid;
-        const width = grid.gridWidth;
-        const height = grid.gridHeight;
-        
-        if (!width || !height) return;
-        
-        const centerX = Math.floor(width / 2);
-        const centerY = Math.floor(height / 2);
-        
-        // Create a copy of the grid data
-        const originalData = grid.gridData.map(row => [...row]);
-        
-        // Apply horizontal mirroring
-        if (this.horizontalActive) {
-            for (let y = 0; y < height; y++) {
-                for (let x = 0; x < width; x++) {
-                    if (originalData[y][x]) {
-                        const mirroredX = 2 * centerX - x;
-                        if (mirroredX >= 0 && mirroredX < width) {
-                            grid.gridData[y][mirroredX] = originalData[y][x];
-                        }
-                    }
-                }
+    getCellData() {
+        if (this.app.layerManager) {
+            const activeLayer = this.app.layerManager.getActiveLayer();
+            if (activeLayer) {
+                return activeLayer.cells;
             }
         }
         
-        // Apply vertical mirroring
-        if (this.verticalActive) {
-            for (let y = 0; y < height; y++) {
-                for (let x = 0; x < width; x++) {
-                    if (originalData[y][x]) {
-                        const mirroredY = 2 * centerY - y;
-                        if (mirroredY >= 0 && mirroredY < height) {
-                            grid.gridData[mirroredY][x] = originalData[y][x];
-                        }
-                    }
-                }
+        return this.app.grid.gridData;
+    }
+    
+    getCellColor(cellData, x, y) {
+        if (this.app.layerManager) {
+            const activeLayer = this.app.layerManager.getActiveLayer();
+            if (activeLayer) {
+                return activeLayer.cells[`${x},${y}`];
             }
         }
         
-        // Apply diagonal mirroring
-        if (this.diagonalActive) {
-            for (let y = 0; y < height; y++) {
-                for (let x = 0; x < width; x++) {
-                    if (originalData[y][x]) {
-                        const dx = x - centerX;
-                        const dy = y - centerY;
-                        
-                        const mirroredX = centerX + dy;
-                        const mirroredY = centerY + dx;
-                        
-                        if (mirroredX >= 0 && mirroredX < width && 
-                            mirroredY >= 0 && mirroredY < height) {
-                            grid.gridData[mirroredY][mirroredX] = originalData[y][x];
-                        }
-                    }
-                }
+        return this.app.grid.gridData[y][x];
+    }
+    
+    setCellColor(x, y, color) {
+        if (this.app.layerManager) {
+            const activeLayer = this.app.layerManager.getActiveLayer();
+            if (activeLayer) {
+                activeLayer.setCell(x, y, color);
             }
+        } else {
+            this.app.grid.gridData[y][x] = color;
         }
     }
 } 
