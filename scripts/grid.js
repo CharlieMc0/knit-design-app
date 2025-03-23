@@ -218,6 +218,13 @@ class KnittingGrid {
         const gridX = coords.x;
         const gridY = coords.y;
         
+        // If mirroring is active, only allow drawing in the primary quadrant
+        if (this.app.mirrorManager && this.app.mirrorManager.isActive()) {
+            if (!this.app.mirrorManager.isInPrimaryQuadrant(gridX, gridY)) {
+                return; // Ignore clicks outside primary quadrant
+            }
+        }
+        
         if (gridX < 0 || gridX >= this.gridWidth || gridY < 0 || gridY >= this.gridHeight) {
             return; // Out of bounds
         }
@@ -281,6 +288,13 @@ class KnittingGrid {
         const coords = this.getCellCoordinates(e);
         const gridX = coords.x;
         const gridY = coords.y;
+        
+        // If mirroring is active, only allow drawing in the primary quadrant
+        if (this.app.mirrorManager && this.app.mirrorManager.isActive()) {
+            if (!this.app.mirrorManager.isInPrimaryQuadrant(gridX, gridY)) {
+                return; // Ignore drawing outside primary quadrant
+            }
+        }
         
         if (gridX < 0 || gridX >= this.gridWidth || gridY < 0 || gridY >= this.gridHeight) {
             return; // Out of bounds

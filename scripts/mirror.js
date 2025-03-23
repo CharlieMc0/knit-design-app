@@ -24,26 +24,37 @@ class MirrorManager {
     
     setupEventListeners() {
         document.getElementById('mirror-horizontal').addEventListener('click', () => {
-            console.log('Mirror horizontal clicked, app:', this.app, 'grid:', this.app?.grid);
+            const wasActive = this.horizontalActive;
             this.horizontalActive = !this.horizontalActive;
             this.updateButtonStates();
-            if (this.liveUpdate) this.applyMirror();
+            if (this.liveUpdate && !wasActive && this.horizontalActive) {
+                this.applyMirror();
+            }
         });
         
         document.getElementById('mirror-vertical').addEventListener('click', () => {
+            const wasActive = this.verticalActive;
             this.verticalActive = !this.verticalActive;
             this.updateButtonStates();
-            if (this.liveUpdate) this.applyMirror();
+            if (this.liveUpdate && !wasActive && this.verticalActive) {
+                this.applyMirror();
+            }
         });
         
         document.getElementById('mirror-diagonal').addEventListener('click', () => {
+            const wasActive = this.diagonalActive;
             this.diagonalActive = !this.diagonalActive;
             this.updateButtonStates();
-            if (this.liveUpdate) this.applyMirror();
+            if (this.liveUpdate && !wasActive && this.diagonalActive) {
+                this.applyMirror();
+            }
         });
         
         document.getElementById('mirror-live-toggle').addEventListener('change', (e) => {
             this.liveUpdate = e.target.checked;
+            if (this.liveUpdate && this.isActive()) {
+                this.applyMirror();
+            }
         });
     }
     
@@ -62,6 +73,9 @@ class MirrorManager {
     }
     
     applyMirror() {
+        // Don't do anything if no mirror modes are active
+        if (!this.isActive()) return;
+        
         // Save state before making changes
         this.app.undoManager.saveState('Apply mirror');
         
@@ -71,55 +85,46 @@ class MirrorManager {
         // Calculate center points for mirroring
         const centerX = Math.floor(this.app.grid.gridWidth / 2);
         const centerY = Math.floor(this.app.grid.gridHeight / 2);
+
+        // Clear all mirrored quadrants first
+        this.clearMirroredQuadrants(centerX, centerY);
         
-        // Apply horizontal mirroring
-        if (this.horizontalActive) {
-            // Process only cells from the left half (priority)
-            for (let y = 0; y < this.app.grid.gridHeight; y++) {
-                for (let x = 0; x < centerX; x++) {
-                    const color = this.getCellColor(cellData, x, y);
+        // Mirror cells from the primary quadrant (top-left)
+        for (let y = 0; y < centerY; y++) {
+            for (let x = 0; x < centerX; x++) {
+                const color = this.getCellColor(cellData, x, y);
+                
+                // Apply horizontal mirroring
+                if (this.horizontalActive) {
                     const mirrorX = 2 * centerX - x - 1;
-                    
                     if (mirrorX >= 0 && mirrorX < this.app.grid.gridWidth) {
-                        // Always set the mirrored cell, even if color is null (erasing)
                         this.setCellColor(mirrorX, y, color);
                     }
                 }
-            }
-        }
-        
-        // Apply vertical mirroring
-        if (this.verticalActive) {
-            // Process only cells from the top half (priority)
-            for (let y = 0; y < centerY; y++) {
-                for (let x = 0; x < this.app.grid.gridWidth; x++) {
-                    const color = this.getCellColor(cellData, x, y);
+                
+                // Apply vertical mirroring
+                if (this.verticalActive) {
                     const mirrorY = 2 * centerY - y - 1;
-                    
                     if (mirrorY >= 0 && mirrorY < this.app.grid.gridHeight) {
-                        // Always set the mirrored cell, even if color is null (erasing)
                         this.setCellColor(x, mirrorY, color);
+                        
+                        // If both horizontal and vertical are active, also mirror to the diagonal
+                        if (this.horizontalActive) {
+                            const mirrorX = 2 * centerX - x - 1;
+                            if (mirrorX >= 0 && mirrorX < this.app.grid.gridWidth) {
+                                this.setCellColor(mirrorX, mirrorY, color);
+                            }
+                        }
                     }
                 }
-            }
-        }
-        
-        // Apply diagonal mirroring
-        if (this.diagonalActive) {
-            // Process only cells from the upper-left to diagonal
-            for (let y = 0; y < this.app.grid.gridHeight; y++) {
-                for (let x = 0; x < this.app.grid.gridWidth; x++) {
-                    // Only process cells above the diagonal (top-left priority)
-                    if (x + y < centerX + centerY) {
-                        const color = this.getCellColor(cellData, x, y);
-                        const mirrorX = centerX + (y - centerY);
-                        const mirrorY = centerY + (x - centerX);
-                        
-                        if (mirrorX >= 0 && mirrorX < this.app.grid.gridWidth && 
-                            mirrorY >= 0 && mirrorY < this.app.grid.gridHeight) {
-                            // Always set the mirrored cell, even if color is null (erasing)
-                            this.setCellColor(mirrorX, mirrorY, color);
-                        }
+                
+                // Apply diagonal mirroring
+                if (this.diagonalActive) {
+                    const mirrorX = centerX + (y - centerY);
+                    const mirrorY = centerY + (x - centerX);
+                    if (mirrorX >= 0 && mirrorX < this.app.grid.gridWidth && 
+                        mirrorY >= 0 && mirrorY < this.app.grid.gridHeight) {
+                        this.setCellColor(mirrorX, mirrorY, color);
                     }
                 }
             }
@@ -168,5 +173,41 @@ class MirrorManager {
         if (x >= 0 && x < this.app.grid.gridWidth && y >= 0 && y < this.app.grid.gridHeight) {
             this.app.grid.gridData[y][x] = color;
         }
+    }
+
+    // Add new method to clear mirrored quadrants
+    clearMirroredQuadrants(centerX, centerY) {
+        if (this.app.layerManager) {
+            const layer = this.app.layerManager.getActiveLayer();
+            if (layer) {
+                // Clear cells in mirrored quadrants
+                Object.keys(layer.cells).forEach(key => {
+                    const [x, y] = key.split(',').map(Number);
+                    
+                    // Check if cell is outside the primary quadrant
+                    const inPrimaryQuadrant = x < centerX && y < centerY;
+                    if (!inPrimaryQuadrant) {
+                        delete layer.cells[key];
+                    }
+                });
+                return;
+            }
+        }
+        
+        // If not using layers, clear grid data in mirrored quadrants
+        for (let y = 0; y < this.app.grid.gridHeight; y++) {
+            for (let x = 0; x < this.app.grid.gridWidth; x++) {
+                if (x >= centerX || y >= centerY) {
+                    this.app.grid.gridData[y][x] = null;
+                }
+            }
+        }
+    }
+
+    // Add method to check if a point is in the primary quadrant
+    isInPrimaryQuadrant(x, y) {
+        const centerX = Math.floor(this.app.grid.gridWidth / 2);
+        const centerY = Math.floor(this.app.grid.gridHeight / 2);
+        return x < centerX && y < centerY;
     }
 } 
