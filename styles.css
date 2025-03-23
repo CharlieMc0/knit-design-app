@@ -570,11 +570,17 @@ footer p {
 
 .layer-controls {
     display: flex;
+    flex-direction: column;
     gap: 8px;
     margin-top: 8px;
 }
 
-.layer-controls button {
+.layer-controls-row {
+    display: flex;
+    gap: 8px;
+}
+
+.layer-controls-row button {
     flex: 1;
     padding: 6px;
     font-size: 12px;

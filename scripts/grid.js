@@ -1008,29 +1008,39 @@ class KnittingGrid {
         const centerX = Math.floor(this.gridWidth / 2) * this.cellSize;
         const centerY = Math.floor(this.gridHeight / 2) * this.cellSize;
 
+        // Draw reflection lines in screen space, not affected by layer offsets
+        const transform = ctx.getTransform();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        
+        // Adjust for zoom level
+        const zoomOffset = (this.zoomLevel - 1) * this.cellSize / 2;
+        const labelMargin = 20;
+
         // Draw vertical center line
         ctx.beginPath();
-        ctx.moveTo(centerX, 0);
-        ctx.lineTo(centerX, gridHeight);
+        ctx.moveTo(centerX * this.zoomLevel + labelMargin, labelMargin);
+        ctx.lineTo(centerX * this.zoomLevel + labelMargin, gridHeight * this.zoomLevel + labelMargin);
         ctx.stroke();
 
         // Draw horizontal center line
         ctx.beginPath();
-        ctx.moveTo(0, centerY);
-        ctx.lineTo(gridWidth, centerY);
+        ctx.moveTo(labelMargin, centerY * this.zoomLevel + labelMargin);
+        ctx.lineTo(gridWidth * this.zoomLevel + labelMargin, centerY * this.zoomLevel + labelMargin);
         ctx.stroke();
 
         // Draw diagonal lines
         ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(gridWidth, gridHeight);
+        ctx.moveTo(labelMargin, labelMargin);
+        ctx.lineTo(gridWidth * this.zoomLevel + labelMargin, gridHeight * this.zoomLevel + labelMargin);
         ctx.stroke();
 
         ctx.beginPath();
-        ctx.moveTo(gridWidth, 0);
-        ctx.lineTo(0, gridHeight);
+        ctx.moveTo(gridWidth * this.zoomLevel + labelMargin, labelMargin);
+        ctx.lineTo(labelMargin, gridHeight * this.zoomLevel + labelMargin);
         ctx.stroke();
 
+        // Restore original transform
+        ctx.setTransform(transform);
         ctx.restore();
     }
 

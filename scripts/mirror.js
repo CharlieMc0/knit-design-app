@@ -78,11 +78,11 @@ class MirrorManager {
             for (let y = 0; y < this.app.grid.gridHeight; y++) {
                 for (let x = 0; x < centerX; x++) {
                     const color = this.getCellColor(cellData, x, y);
-                    if (color) {
-                        const mirrorX = 2 * centerX - x - 1;
-                        if (mirrorX >= 0 && mirrorX < this.app.grid.gridWidth) {
-                            this.setCellColor(mirrorX, y, color);
-                        }
+                    const mirrorX = 2 * centerX - x - 1;
+                    
+                    if (mirrorX >= 0 && mirrorX < this.app.grid.gridWidth) {
+                        // Always set the mirrored cell, even if color is null (erasing)
+                        this.setCellColor(mirrorX, y, color);
                     }
                 }
             }
@@ -94,11 +94,11 @@ class MirrorManager {
             for (let y = 0; y < centerY; y++) {
                 for (let x = 0; x < this.app.grid.gridWidth; x++) {
                     const color = this.getCellColor(cellData, x, y);
-                    if (color) {
-                        const mirrorY = 2 * centerY - y - 1;
-                        if (mirrorY >= 0 && mirrorY < this.app.grid.gridHeight) {
-                            this.setCellColor(x, mirrorY, color);
-                        }
+                    const mirrorY = 2 * centerY - y - 1;
+                    
+                    if (mirrorY >= 0 && mirrorY < this.app.grid.gridHeight) {
+                        // Always set the mirrored cell, even if color is null (erasing)
+                        this.setCellColor(x, mirrorY, color);
                     }
                 }
             }
@@ -112,14 +112,13 @@ class MirrorManager {
                     // Only process cells above the diagonal (top-left priority)
                     if (x + y < centerX + centerY) {
                         const color = this.getCellColor(cellData, x, y);
-                        if (color) {
-                            // Swap x and y for diagonal reflection
-                            const mirrorX = centerX + (y - centerY);
-                            const mirrorY = centerY + (x - centerX);
-                            if (mirrorX >= 0 && mirrorX < this.app.grid.gridWidth && 
-                                mirrorY >= 0 && mirrorY < this.app.grid.gridHeight) {
-                                this.setCellColor(mirrorX, mirrorY, color);
-                            }
+                        const mirrorX = centerX + (y - centerY);
+                        const mirrorY = centerY + (x - centerX);
+                        
+                        if (mirrorX >= 0 && mirrorX < this.app.grid.gridWidth && 
+                            mirrorY >= 0 && mirrorY < this.app.grid.gridHeight) {
+                            // Always set the mirrored cell, even if color is null (erasing)
+                            this.setCellColor(mirrorX, mirrorY, color);
                         }
                     }
                 }
@@ -153,11 +152,20 @@ class MirrorManager {
     
     setCellColor(x, y, color) {
         if (this.app.layerManager) {
-            const activeLayer = this.app.layerManager.getActiveLayer();
-            if (activeLayer) {
-                activeLayer.setCell(x, y, color);
+            const layer = this.app.layerManager.getActiveLayer();
+            if (layer) {
+                if (color === null) {
+                    // For erasing, delete the cell from the layer
+                    delete layer.cells[`${x},${y}`];
+                } else {
+                    layer.setCell(x, y, color);
+                }
+                return;
             }
-        } else {
+        }
+        
+        // If not using layers or no active layer
+        if (x >= 0 && x < this.app.grid.gridWidth && y >= 0 && y < this.app.grid.gridHeight) {
             this.app.grid.gridData[y][x] = color;
         }
     }

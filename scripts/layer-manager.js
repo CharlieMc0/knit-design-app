@@ -313,6 +313,28 @@ class LayerManager {
     toggleDragMode() {
         this.dragMode = !this.dragMode;
         
+        // If enabling drag mode, disable mirror live updates
+        if (this.dragMode && this.app.mirrorManager) {
+            // Store the previous state so we can restore it later
+            this.previousLiveUpdateState = this.app.mirrorManager.liveUpdate;
+            this.app.mirrorManager.liveUpdate = false;
+            
+            // Update the checkbox in the UI
+            const liveUpdateToggle = document.getElementById('mirror-live-toggle');
+            if (liveUpdateToggle) {
+                liveUpdateToggle.checked = false;
+            }
+        } else if (!this.dragMode && this.app.mirrorManager) {
+            // Restore previous live update state when disabling drag mode
+            this.app.mirrorManager.liveUpdate = this.previousLiveUpdateState;
+            
+            // Update the checkbox in the UI
+            const liveUpdateToggle = document.getElementById('mirror-live-toggle');
+            if (liveUpdateToggle) {
+                liveUpdateToggle.checked = this.previousLiveUpdateState;
+            }
+        }
+        
         // Toggle the button appearance
         const dragToggleBtn = document.getElementById('layer-drag-toggle');
         if (dragToggleBtn) {
