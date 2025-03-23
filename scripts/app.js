@@ -54,10 +54,53 @@ class KnittingChartApp {
         });
 
         this.setupEventListeners();
+        this.setupToolbarResize();
     }
 
     setupEventListeners() {
         // Implementation of setupEventListeners method
+    }
+
+    setupToolbarResize() {
+        const toolbar = document.querySelector('.toolbar');
+        const handle = document.querySelector('.toolbar-resize-handle');
+        let isResizing = false;
+        let startX;
+        let startWidth;
+        
+        handle.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            startX = e.pageX;
+            startWidth = parseInt(getComputedStyle(toolbar).width, 10);
+            
+            // Add resizing class to prevent text selection
+            document.body.classList.add('resizing');
+            handle.classList.add('active');
+        });
+        
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+            
+            const width = startWidth + (e.pageX - startX);
+            
+            // Constrain width between min and max values
+            if (width >= 180 && width <= 400) {
+                toolbar.style.width = `${width}px`;
+                
+                // Force a re-render of the grid to adjust to new layout
+                if (this.grid) {
+                    this.grid.render();
+                }
+            }
+        });
+        
+        document.addEventListener('mouseup', () => {
+            if (isResizing) {
+                isResizing = false;
+                document.body.classList.remove('resizing');
+                handle.classList.remove('active');
+            }
+        });
     }
 }
 
