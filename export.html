@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Export Knitting Chart</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+        }
+        .export-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .preview-area {
+            margin: 20px 0;
+            text-align: center;
+        }
+        .controls {
+            margin: 20px 0;
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        button:hover {
+            background: #2980b9;
+        }
+        canvas {
+            border: 1px solid #ddd;
+            margin: 20px auto;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="export-container">
+        <h1>Export Knitting Chart</h1>
+        <div class="preview-area">
+            <canvas id="preview-canvas"></canvas>
+        </div>
+        <div class="controls">
+            <button id="save-pdf">Save as PDF</button>
+            <button id="back-to-editor" onclick="window.close()">Back to Editor</button>
+        </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script>
+        // The design data will be passed via URL parameters
+        const params = new URLSearchParams(window.location.search);
+        const designData = JSON.parse(decodeURIComponent(params.get('data')));
+        
+        const canvas = document.getElementById('preview-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Set up canvas
+        canvas.width = designData.width;
+        canvas.height = designData.height;
+        
+        // Draw the design
+        const image = new Image();
+        image.onload = function() {
+            ctx.drawImage(image, 0, 0);
+        };
+        image.src = designData.imageData;
+        
+        // PDF export
+        document.getElementById('save-pdf').addEventListener('click', () => {
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF({
+                orientation: designData.width > designData.height ? 'landscape' : 'portrait',
+                unit: 'px',
+                format: [designData.width + 40, designData.height + 40]
+            });
+            
+            pdf.addImage(
+                canvas.toDataURL('image/png'),
+                'PNG',
+                20,
+                20,
+                designData.width,
+                designData.height
+            );
+            
+            pdf.save('knitting-chart.pdf');
+        });
+    </script>
+</body>
+</html> 
