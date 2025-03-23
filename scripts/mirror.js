@@ -6,7 +6,20 @@ class MirrorManager {
         this.diagonalActive = false;
         this.liveUpdate = true;
         
-        this.setupEventListeners();
+        // Ensure app and grid are available before proceeding
+        if (!app || !app.grid) {
+            console.error('MirrorManager: app or grid not available');
+            // Try to recover by finding the app instance
+            if (window.app) {
+                this.app = window.app;
+                console.log('MirrorManager: recovered app from window.app');
+            }
+        }
+        
+        // Delay setup to ensure DOM is ready
+        setTimeout(() => {
+            this.setupEventListeners();
+        }, 100);
     }
     
     setupEventListeners() {

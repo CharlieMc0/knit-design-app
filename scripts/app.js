@@ -1,5 +1,18 @@
 class KnittingChartApp {
     constructor() {
+        // Enable debug mode
+        this.debug = true;
+        
+        // Log initialization
+        if (this.debug) {
+            console.log('Initializing KnittingChartApp');
+            
+            // Add a global error handler
+            window.addEventListener('error', (event) => {
+                console.error('Global error:', event.error);
+            });
+        }
+        
         // Store app reference
         window.app = this;
         

@@ -67,6 +67,11 @@ class KnittingGrid {
         document.getElementById('save-design').addEventListener('click', () => {
             this.saveDesign();
         });
+        
+        // Load design button
+        document.getElementById('load-design').addEventListener('click', () => {
+            this.loadDesign();
+        });
     }
     
     handleMouseDown(e) {
@@ -824,5 +829,89 @@ class KnittingGrid {
         
         // Show feedback
         this.showToast('Design saved!');
+    }
+    
+    loadDesign() {
+        // Create a file input element
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = '.json';
+        
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const designData = JSON.parse(event.target.result);
+                    
+                    // Validate the design data
+                    if (!designData.version || !designData.gridWidth || !designData.gridHeight) {
+                        throw new Error('Invalid design file format');
+                    }
+                    
+                    // Save current state for undo
+                    this.app.undoManager.saveState('Load design');
+                    
+                    // Update grid dimensions if needed
+                    if (this.gridWidth !== designData.gridWidth || 
+                        this.gridHeight !== designData.gridHeight) {
+                        this.gridWidth = designData.gridWidth;
+                        this.gridHeight = designData.gridHeight;
+                        
+                        // Update input fields
+                        document.getElementById('grid-width').value = this.gridWidth;
+                        document.getElementById('grid-height').value = this.gridHeight;
+                        
+                        this.initialize();
+                    }
+                    
+                    // Load colors
+                    if (designData.colors && Array.isArray(designData.colors)) {
+                        this.app.colorManager.colors = [...designData.colors];
+                        this.app.colorManager.renderPalette();
+                    }
+                    
+                    // Load layers
+                    if (designData.layers && Array.isArray(designData.layers)) {
+                        // Clear existing layers
+                        this.app.layerManager.layers = [];
+                        
+                        // Create new layers from design data
+                        designData.layers.forEach(layerData => {
+                            const layer = new Layer(layerData.id, layerData.name);
+                            layer.visible = layerData.visible;
+                            layer.opacity = layerData.opacity;
+                            layer.offsetX = layerData.offsetX || 0;
+                            layer.offsetY = layerData.offsetY || 0;
+                            layer.cells = {...layerData.cells};
+                            
+                            this.app.layerManager.layers.push(layer);
+                        });
+                        
+                        // Set active layer
+                        if (this.app.layerManager.layers.length > 0) {
+                            this.app.layerManager.setActiveLayer(this.app.layerManager.layers[0].id);
+                        }
+                        
+                        // Update layers list
+                        this.app.layerManager.renderLayersList();
+                    }
+                    
+                    this.render();
+                    this.showToast('Design loaded successfully!');
+                    
+                } catch (error) {
+                    console.error('Error loading design:', error);
+                    this.showToast('Error loading design file');
+                }
+            };
+            
+            reader.readAsText(file);
+        });
+        
+        // Trigger file selection
+        fileInput.click();
     }
 } 
