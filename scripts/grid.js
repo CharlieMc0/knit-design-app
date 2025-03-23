@@ -75,12 +75,10 @@ class KnittingGrid {
     }
     
     handleMouseDown(e) {
-        const rect = this.canvas.getBoundingClientRect();
-        const labelMargin = 20;
-        
-        // Get grid (world) coordinates from mouse position
-        let gridX = Math.floor((e.clientX - rect.left - labelMargin) / (this.cellSize * this.zoomLevel));
-        let gridY = Math.floor((e.clientY - rect.top - labelMargin) / (this.cellSize * this.zoomLevel));
+        // Use the new getCellCoordinates method instead of manual calculation
+        const coords = this.getCellCoordinates(e);
+        const gridX = coords.x;
+        const gridY = coords.y;
         
         if (gridX < 0 || gridX >= this.gridWidth || gridY < 0 || gridY >= this.gridHeight) {
             return; // Out of bounds
@@ -138,12 +136,10 @@ class KnittingGrid {
     }
     
     handleMouseMove(e) {
-        const rect = this.canvas.getBoundingClientRect();
-        const labelMargin = 20;
-        
-        // Get grid (world) coordinates from mouse position
-        let gridX = Math.floor((e.clientX - rect.left - labelMargin) / (this.cellSize * this.zoomLevel));
-        let gridY = Math.floor((e.clientY - rect.top - labelMargin) / (this.cellSize * this.zoomLevel));
+        // Use the new getCellCoordinates method instead of manual calculation
+        const coords = this.getCellCoordinates(e);
+        const gridX = coords.x;
+        const gridY = coords.y;
         
         if (gridX < 0 || gridX >= this.gridWidth || gridY < 0 || gridY >= this.gridHeight) {
             return; // Out of bounds
@@ -208,11 +204,10 @@ class KnittingGrid {
         if (['rectangle', 'circle', 'line'].includes(this.app.currentTool) && 
             this.app.shapeDrawer && this.app.shapeDrawer.isDrawing) {
             
-            const rect = this.canvas.getBoundingClientRect();
-            const labelMargin = 20;
-            
-            let gridX = Math.floor((e.clientX - rect.left - labelMargin) / (this.cellSize * this.zoomLevel));
-            let gridY = Math.floor((e.clientY - rect.top - labelMargin) / (this.cellSize * this.zoomLevel));
+            // Use the new getCellCoordinates method
+            const coords = this.getCellCoordinates(e);
+            const gridX = coords.x;
+            const gridY = coords.y;
             
             // If we're in layer drag mode, don't handle drawing
             if (this.app.layerManager && this.app.layerManager.dragMode) {
@@ -341,86 +336,41 @@ class KnittingGrid {
     }
     
     fillArea(startX, startY, newColor) {
-        if (this.app.layerManager) {
-            const layer = this.app.layerManager.getActiveLayer();
+        const layer = this.app.layerManager ? this.app.layerManager.getActiveLayer() : null;
+        const getColor = (x, y) => layer ? layer.getCell(x, y) : this.gridData[y][x];
+        const setColor = (x, y, color) => {
             if (layer) {
-                // Get the original color at this position
-                const startColor = layer.getCell(startX, startY);
-                
-                // Don't fill if already the same color
-                if (startColor === newColor) return;
-                
-                // Save state before making changes
-                this.app.undoManager.saveState('Fill area');
-                
-                // Use a recursive approach for filling
-                const visited = new Set();
-                const key = `${startX},${startY}`;
+                layer.setCell(x, y, color);
+            } else {
+                this.gridData[y][x] = color;
+            }
+        };
+
+        const startColor = getColor(startX, startY);
+        if (startColor === newColor) return;
+
+        const stack = [{ x: startX, y: startY }];
+        const visited = new Set();
+
+        while (stack.length > 0) {
+            const { x, y } = stack.pop();
+            const key = `${x},${y}`;
+
+            if (visited.has(key) || x < 0 || x >= this.gridWidth || y < 0 || y >= this.gridHeight) {
+                continue;
+            }
+
+            if (getColor(x, y) === startColor) {
+                setColor(x, y, newColor);
                 visited.add(key);
-                
-                const fillRecursive = (x, y) => {
-                    const currentKey = `${x},${y}`;
-                    
-                    // Skip if already visited
-                    if (visited.has(currentKey)) return;
-                    visited.add(currentKey);
-                    
-                    // Check current color
-                    const currentColor = layer.getCell(x, y);
-                    if (currentColor !== startColor) return;
-                    
-                    // Fill this cell
-                    layer.setCell(x, y, newColor);
-                    
-                    // Try filling adjacent cells
-                    fillRecursive(x + 1, y); // Right
-                    fillRecursive(x - 1, y); // Left
-                    fillRecursive(x, y + 1); // Down
-                    fillRecursive(x, y - 1); // Up
-                };
-                
-                // Start the fill
-                fillRecursive(startX, startY);
-                this.render();
-                return;
+
+                stack.push({ x: x + 1, y });
+                stack.push({ x: x - 1, y });
+                stack.push({ x, y: y + 1 });
+                stack.push({ x, y: y - 1 });
             }
         }
-        
-        // Original grid-based fill if not using layers
-        const startColor = this.gridData[startY][startX];
-        
-        // Don't fill if already the same color
-        if (startColor === newColor) return;
-        
-        // Save state before making changes
-        this.app.undoManager.saveState('Fill area');
-        
-        const queue = [{ x: startX, y: startY }];
-        const visited = Array(this.gridHeight).fill().map(() => 
-            Array(this.gridWidth).fill(false)
-        );
-        
-        while (queue.length > 0) {
-            const { x, y } = queue.shift();
-            
-            // Skip if already visited or outside bounds
-            if (x < 0 || x >= this.gridWidth || y < 0 || y >= this.gridHeight || 
-                visited[y][x]) continue;
-            
-            // Only fill cells with the same color as the starting cell
-            if (this.gridData[y][x] !== startColor) continue;
-            
-            // Fill this cell
-            this.gridData[y][x] = newColor;
-            visited[y][x] = true;
-            
-            // Add adjacent cells to the queue
-            queue.push({ x: x + 1, y: y }); // Right
-            queue.push({ x: x - 1, y: y }); // Left
-            queue.push({ x: x, y: y + 1 }); // Down
-            queue.push({ x: x, y: y - 1 }); // Up
-        }
-        
+
         this.render();
     }
     
@@ -917,19 +867,11 @@ class KnittingGrid {
 
     getCellCoordinates(event) {
         const rect = this.canvas.getBoundingClientRect();
-        const scale = this.zoomLevel; // Use current zoom level
+        const labelMargin = 20; // Same margin used in render method
         
-        // Calculate position considering the zoom and scroll position
-        const scrollLeft = this.canvas.parentElement.scrollLeft;
-        const scrollTop = this.canvas.parentElement.scrollTop;
-        
-        // Calculate the true canvas-relative position
-        const canvasX = (event.clientX - rect.left) / scale + scrollLeft;
-        const canvasY = (event.clientY - rect.top) / scale + scrollTop;
-        
-        // Convert to grid coordinates
-        const x = Math.floor(canvasX / this.cellSize);
-        const y = Math.floor(canvasY / this.cellSize);
+        // Simple calculation that accounts for label margin and zoom
+        const x = Math.floor((event.clientX - rect.left - labelMargin) / (this.cellSize * this.zoomLevel));
+        const y = Math.floor((event.clientY - rect.top - labelMargin) / (this.cellSize * this.zoomLevel));
         
         return { x, y };
     }
